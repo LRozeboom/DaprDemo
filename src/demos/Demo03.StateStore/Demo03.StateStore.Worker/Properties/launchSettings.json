@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Demo03.StateStore.Worker": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:59695;http://localhost:59699"
+    }
+  }
+}
