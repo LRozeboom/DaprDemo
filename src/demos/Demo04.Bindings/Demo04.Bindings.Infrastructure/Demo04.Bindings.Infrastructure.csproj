@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Dapr.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Demo04.Bindings.Application\Demo04.Bindings.Application.csproj" />
+    <ProjectReference Include="..\..\..\DaprDemos.Contracts\DaprDemos.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

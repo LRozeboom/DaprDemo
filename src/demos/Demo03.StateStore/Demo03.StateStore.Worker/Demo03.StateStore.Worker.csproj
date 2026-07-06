@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Dapr.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\DaprDemos.Contracts\DaprDemos.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\DaprDemos.ServiceDefaults\DaprDemos.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\DaprDemos.SharedKernel\DaprDemos.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

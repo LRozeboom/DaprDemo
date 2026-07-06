@@ -1,0 +1,22 @@
+<Project Sdk="Aspire.AppHost.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>0d1c7d5e-9f2a-4b83-a6c1-3de54f8b7a21</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" />
+    <PackageReference Include="Aspire.Hosting.Redis" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\demos\Demo01.PubSub\Demo01.PubSub.Publisher\Demo01.PubSub.Publisher.csproj" />
+    <ProjectReference Include="..\demos\Demo01.PubSub\Demo01.PubSub.Subscriber\Demo01.PubSub.Subscriber.csproj" />
+    <ProjectReference Include="..\demos\Demo02.Retries\Demo02.Retries.Subscriber\Demo02.Retries.Subscriber.csproj" />
+    <ProjectReference Include="..\demos\Demo03.StateStore\Demo03.StateStore.Worker\Demo03.StateStore.Worker.csproj" />
+    <ProjectReference Include="..\demos\Demo04.Bindings\Demo04.Bindings.Api\Demo04.Bindings.Api.csproj" />
+  </ItemGroup>
+
+</Project>

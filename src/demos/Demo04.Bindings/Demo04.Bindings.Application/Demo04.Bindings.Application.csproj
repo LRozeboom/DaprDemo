@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Demo04.Bindings.Domain\Demo04.Bindings.Domain.csproj" />
+    <ProjectReference Include="..\..\..\DaprDemos.SharedKernel\DaprDemos.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>
