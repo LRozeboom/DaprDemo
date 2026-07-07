@@ -1,3 +1,4 @@
+using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
 
 namespace Demo03.StateStore.Worker.Counter.IncrementCounter;
@@ -19,8 +20,7 @@ public sealed class IncrementCounterCommandHandler(
             return next;
         }
 
-        // Bounded ETag retry loop with jitter; mirrors the ETag-retry approach used in the
-        // production SensorAggregateRepository.
+        // Bounded ETag retry loop with jitter;
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             var (current, etag) = await counterStore.GetWithETagAsync(cancellationToken);

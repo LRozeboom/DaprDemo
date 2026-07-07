@@ -2,7 +2,7 @@
 
 Four small, independent Dapr concept demos in one .NET 10 solution, orchestrated by a single
 .NET Aspire AppHost. Every demo resource is **explicit-start**: nothing runs until you click
-*Start* on it in the Aspire dashboard, which makes the dashboard your demo remote control.
+*Start* on it in the Aspire dashboard.
 
 | Demo | Concept | Resources | Fixed port(s) |
 |------|---------|-----------|---------------|

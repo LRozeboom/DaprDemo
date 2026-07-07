@@ -1,3 +1,4 @@
+using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
 
 namespace Demo03.StateStore.Worker.Counter.GetCounter;

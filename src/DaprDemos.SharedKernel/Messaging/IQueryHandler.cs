@@ -1,6 +1,6 @@
 using DaprDemos.SharedKernel.Results;
 
-namespace Demo03.StateStore.Worker;
+namespace DaprDemos.SharedKernel.Messaging;
 
 public interface IQueryHandler<in TQuery, TResponse>
 {

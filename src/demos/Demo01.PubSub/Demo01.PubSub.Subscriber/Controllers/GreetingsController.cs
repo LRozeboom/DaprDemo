@@ -1,6 +1,7 @@
 using Dapr;
 using DaprDemos.Contracts.Messaging;
 using DaprDemos.Contracts.Messaging.Events;
+using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
 using Demo01.PubSub.Subscriber.Greetings.HandleGreeting;
 using Microsoft.AspNetCore.Mvc;

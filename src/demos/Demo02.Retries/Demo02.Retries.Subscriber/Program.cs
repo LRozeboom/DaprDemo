@@ -1,3 +1,4 @@
+using DaprDemos.SharedKernel.Messaging;
 using Demo02.Retries.Subscriber;
 using Demo02.Retries.Subscriber.FlakyMessages;
 using Demo02.Retries.Subscriber.FlakyMessages.PublishFlakyMessage;

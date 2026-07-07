@@ -1,3 +1,4 @@
+using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
 using Demo04.Bindings.Api.Alerts;
 using Demo04.Bindings.Application;

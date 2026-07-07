@@ -1,6 +1,7 @@
 using Dapr.Client;
 using DaprDemos.Contracts.Messaging;
 using DaprDemos.Contracts.Messaging.Events;
+using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
 // Alias needed: the Demo01.PubSub.* namespace shadows the PubSub constants class.
 using Messaging = DaprDemos.Contracts.Messaging;

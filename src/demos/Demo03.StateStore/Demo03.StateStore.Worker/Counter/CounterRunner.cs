@@ -1,3 +1,4 @@
+using DaprDemos.SharedKernel.Messaging;
 using Demo03.StateStore.Worker.Counter.IncrementCounter;
 
 namespace Demo03.StateStore.Worker.Counter;

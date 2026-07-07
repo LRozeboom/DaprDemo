@@ -1,6 +1,7 @@
 using Dapr;
 using DaprDemos.Contracts.Messaging;
 using DaprDemos.Contracts.Messaging.Events;
+using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
 using Demo02.Retries.Subscriber.FlakyMessages.HandleFlakyMessage;
 using Microsoft.AspNetCore.Mvc;
