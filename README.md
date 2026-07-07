@@ -34,6 +34,17 @@ stopped; Redis and RabbitMQ come up automatically.
 
 Dry-run tip: `DEMO_AUTOSTART=true` starts every demo immediately instead of explicit-start.
 
+### Interactive API testing (Scalar)
+
+Every demo app serves a [Scalar](https://scalar.com/) API reference at `/scalar`
+(OpenAPI document at `/openapi/v1.json`) while running in Development — an alternative to the
+`curl` commands below. Once an app is started in the dashboard, open:
+
+- Demo 01: <http://localhost:5101/scalar> (publisher)
+- Demo 02: <http://localhost:5201/scalar>
+- Demo 03: <http://localhost:5301/scalar> (worker A) / <http://localhost:5302/scalar> (worker B)
+- Demo 04: <http://localhost:5401/scalar>
+
 ### How a demo starts
 
 Each app has a Dapr sidecar resource (`<name>-dapr-cli`). Sidecars wait for the broker

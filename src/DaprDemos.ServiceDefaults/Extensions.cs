@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -24,6 +25,8 @@ public static class Extensions
         builder.AddDefaultHealthChecks();
 
         builder.Services.AddServiceDiscovery();
+
+        builder.Services.AddOpenApi();
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
@@ -104,6 +107,10 @@ public static class Extensions
             {
                 Predicate = r => r.Tags.Contains("live")
             });
+
+            // Interactive API reference at /scalar (document at /openapi/v1.json).
+            app.MapOpenApi();
+            app.MapScalarApiReference();
         }
 
         return app;
