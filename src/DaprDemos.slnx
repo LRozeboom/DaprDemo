@@ -1,0 +1,28 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/demos/" />
+  <Folder Name="/demos/Demo01.PubSub/">
+    <Project Path="demos/Demo01.PubSub/Demo01.PubSub.Publisher/Demo01.PubSub.Publisher.csproj" />
+    <Project Path="demos/Demo01.PubSub/Demo01.PubSub.Subscriber/Demo01.PubSub.Subscriber.csproj" />
+  </Folder>
+  <Folder Name="/demos/Demo02.Retries/">
+    <Project Path="demos/Demo02.Retries/Demo02.Retries.Subscriber/Demo02.Retries.Subscriber.csproj" />
+  </Folder>
+  <Folder Name="/demos/Demo03.StateStore/">
+    <Project Path="demos/Demo03.StateStore/Demo03.StateStore.Worker/Demo03.StateStore.Worker.csproj" />
+  </Folder>
+  <Folder Name="/demos/Demo04.Bindings/">
+    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Api/Demo04.Bindings.Api.csproj" />
+    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Application/Demo04.Bindings.Application.csproj" />
+    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Domain/Demo04.Bindings.Domain.csproj" />
+    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Infrastructure/Demo04.Bindings.Infrastructure.csproj" />
+  </Folder>
+  <Project Path="DaprDemos.AppHost/DaprDemos.AppHost.csproj" />
+  <Project Path="DaprDemos.Contracts/DaprDemos.Contracts.csproj" />
+  <Project Path="DaprDemos.ServiceDefaults/DaprDemos.ServiceDefaults.csproj" />
+  <Project Path="DaprDemos.SharedKernel/DaprDemos.SharedKernel.csproj" />
+</Solution>

@@ -1,0 +1,18 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.rabbitmq
+  version: v1
+  # Generous init timeout: sidecars can start before the RabbitMQ container is ready (slow pull)
+  initTimeout: 120s
+  metadata:
+  - name: connectionString
+    value: amqp://guest:guest@localhost:5673
+  - name: durable
+    value: "true"
+scopes:
+- demo01-publisher
+- demo01-subscriber
+- demo02-subscriber

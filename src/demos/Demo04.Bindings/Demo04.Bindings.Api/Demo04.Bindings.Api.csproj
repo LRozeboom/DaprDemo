@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Demo04.Bindings.Application\Demo04.Bindings.Application.csproj" />
+    <ProjectReference Include="..\Demo04.Bindings.Infrastructure\Demo04.Bindings.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\DaprDemos.ServiceDefaults\DaprDemos.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

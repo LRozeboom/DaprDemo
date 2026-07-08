@@ -1,0 +1,19 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+spec:
+  type: state.redis
+  version: v1
+  # Generous init timeout: sidecars can start before the Redis container is ready (slow pull)
+  initTimeout: 120s
+  metadata:
+  - name: redisHost
+    value: localhost:6390
+  - name: redisPassword
+    value: daprdemos
+  - name: enableTLS
+    value: "true"
+scopes:
+- demo03-worker-a
+- demo03-worker-b

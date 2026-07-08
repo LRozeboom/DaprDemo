@@ -1,0 +1,24 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.redis
+  version: v1
+  # Generous init timeout: sidecars can start before the Redis container is ready (slow pull)
+  initTimeout: 120s
+  metadata:
+  - name: redisHost
+    value: localhost:6390
+  - name: redisPassword
+    value: daprdemos
+  - name: enableTLS
+    value: "true"
+  - name: processingTimeout
+    value: 5s
+  - name: redeliverInterval
+    value: 1s
+scopes:
+- demo01-publisher
+- demo01-subscriber
+- demo02-subscriber
