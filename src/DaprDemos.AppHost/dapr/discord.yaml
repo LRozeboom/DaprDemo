@@ -1,6 +1,3 @@
-# HTTP output binding aimed at a Discord webhook. The URL is resolved from the
-# DISCORD_WEBHOOK_URL environment variable via the envvar-secrets store — never hardcoded.
-# Scoped to demo04-api so a missing webhook URL cannot break the other demos' sidecars.
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:

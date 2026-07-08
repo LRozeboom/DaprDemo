@@ -5,16 +5,13 @@ metadata:
 spec:
   type: state.redis
   version: v1
-  # Generous init timeout: sidecars can start before the Redis container is ready, and
-  # daprd's 5s default kills the whole sidecar on a slow first pull.
+  # Generous init timeout: sidecars can start before the Redis container is ready (slow pull)
   initTimeout: 120s
   metadata:
   - name: redisHost
     value: localhost:6390
   - name: redisPassword
     value: daprdemos
-  # Aspire 13 runs the Redis container with TLS on by default (self-signed dev cert);
-  # Dapr's Redis client skips certificate verification when enableTLS is set.
   - name: enableTLS
     value: "true"
 scopes:

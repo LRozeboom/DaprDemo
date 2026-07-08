@@ -1,5 +1,3 @@
-# Demo 01 swap target: copy this over pubsub.yaml, restart the demo apps — zero code changes.
-# The .disabled extension keeps daprd from loading two components named "pubsub" at once.
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -7,8 +5,7 @@ metadata:
 spec:
   type: pubsub.rabbitmq
   version: v1
-  # Generous init timeout: sidecars can start before the RabbitMQ container is ready, and
-  # daprd's 5s default kills the whole sidecar on a slow first pull.
+  # Generous init timeout: sidecars can start before the RabbitMQ container is ready (slow pull)
   initTimeout: 120s
   metadata:
   - name: connectionString
