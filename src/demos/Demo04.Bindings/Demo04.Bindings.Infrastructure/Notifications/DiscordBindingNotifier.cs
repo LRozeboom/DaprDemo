@@ -9,9 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Demo04.Bindings.Infrastructure.Notifications;
 
-// The vendor details (binding component name, Discord webhook payload shape) live here on
-// purpose: the Application layer only knows INotifier, so replacing Discord is an
-// Infrastructure-only change. Mirrors the production DiscordBindingNotifier.
 public sealed class DiscordBindingNotifier(
     DaprClient daprClient,
     ILogger<DiscordBindingNotifier> logger) : INotifier

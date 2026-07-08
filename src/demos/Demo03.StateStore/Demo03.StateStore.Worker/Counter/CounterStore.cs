@@ -3,7 +3,6 @@ using DaprDemos.Contracts.Messaging;
 
 namespace Demo03.StateStore.Worker.Counter;
 
-/// <summary>Wraps the Dapr state store access so the handlers keep a repository-like shape.</summary>
 public sealed class CounterStore(DaprClient daprClient)
 {
     public const string Key = "demo-counter";

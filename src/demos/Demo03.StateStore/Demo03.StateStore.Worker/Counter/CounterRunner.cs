@@ -16,7 +16,7 @@ public sealed class CounterRunner(
         await foreach (var _ in runSignal.WaitForRunsAsync(stoppingToken))
         {
             logger.LogInformation(
-                "▶️ Starting {Iterations} read-modify-write increments (ETags: {UseETags})",
+                "Starting {Iterations} read-modify-write increments (ETags: {UseETags})",
                 Iterations,
                 options.UseETags);
 
@@ -45,7 +45,7 @@ public sealed class CounterRunner(
             }
 
             logger.LogInformation(
-                "🏁 Run finished: {Succeeded} increments succeeded, {Failures} failed, last observed counter value {LastObserved}",
+                "Run finished: {Succeeded} increments succeeded, {Failures} failed, last observed counter value {LastObserved}",
                 Iterations - failures,
                 failures,
                 lastObserved);
