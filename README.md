@@ -152,13 +152,3 @@ curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json"
   Dapr components therefore set `enableTLS: "true"` (Dapr's Redis client does not verify the
   certificate).
 - Component `initTimeout` is 120 s so a slow first container pull can't kill a sidecar.
-
-## Not verified in CI
-
-Real Discord delivery was verified by pointing `DISCORD_WEBHOOK_URL` at a local HTTP sink and
-observing the binding's POST; the payload shape (`{"content": "**title**\nmessage"}`) matches
-Discord's webhook API but has not been fired at a real webhook from this environment.
-
-Two paths were not exercised end-to-end and are worth a dry run before the talk: the demo 01
-RabbitMQ swap (component loads standalone, but delivery through RabbitMQ wasn't observed) and
-demo 03 with `USE_ETAGS=true` (the retry loop is in place; the exact-400 outcome wasn't re-run).
