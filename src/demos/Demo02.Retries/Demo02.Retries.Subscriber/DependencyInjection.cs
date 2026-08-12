@@ -12,8 +12,7 @@ public static class DependencyInjection
     {
         services.AddDaprClient();
 
-        services.AddSingleton<FailureToggle>();
-        services.AddSingleton<DeliveryAttempts>();
+        services.AddSingleton<FlakyDeliveryPlan>();
 
         services.AddScoped<ICommandHandler<PublishFlakyMessageCommand, Guid>, PublishFlakyMessageCommandHandler>();
         services.AddScoped<ICommandHandler<HandleFlakyMessageCommand, Unit>, HandleFlakyMessageCommandHandler>();

@@ -14,10 +14,13 @@ spec:
     value: daprdemos
   - name: enableTLS
     value: "true"
+  # Backstop only: demo 02's visible retries come from the inbound retry policy in `resiliency.yaml`,
+  # which holds a message in flight for up to ~20s. These values stay well above that window so the
+  # reclaim loop never delivers a duplicate on top of a retry that is still running.
   - name: processingTimeout
-    value: 5s
+    value: 60s
   - name: redeliverInterval
-    value: 1s
+    value: 15s
 scopes:
 - demo01-publisher
 - demo01-subscriber

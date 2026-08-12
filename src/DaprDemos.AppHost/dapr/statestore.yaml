@@ -14,6 +14,11 @@ spec:
     value: daprdemos
   - name: enableTLS
     value: "true"
+  # Load-bearing for demo 03: the default keyPrefix is `appid`, which stores the counter as
+  # `demo03-worker-a||demo-counter` and `demo03-worker-b||demo-counter` — two workers, two private
+  # counters, no contention to show. `none` makes both workers share the raw `demo-counter` key.
+  - name: keyPrefix
+    value: none
 scopes:
 - demo03-worker-a
 - demo03-worker-b

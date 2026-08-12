@@ -1,6 +1,5 @@
 using DaprDemos.SharedKernel.Messaging;
 using Demo02.Retries.Subscriber;
-using Demo02.Retries.Subscriber.FlakyMessages;
 using Demo02.Retries.Subscriber.FlakyMessages.PublishFlakyMessage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,12 +29,6 @@ app.MapPost("/publish", async (
     return result.Match(
         id => Results.Ok(new { id }),
         error => Results.BadRequest(new { error.Code, error.Message }));
-});
-
-app.MapPost("/fail-next/{count:int}", (int count, FailureToggle failureToggle) =>
-{
-    failureToggle.FailNext(count);
-    return Results.Ok(new { armedFailures = count });
 });
 
 app.Run();
