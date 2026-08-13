@@ -31,7 +31,12 @@ There are no test projects. Verification is manual: launch the AppHost (needs Do
 - Sidecars `WaitFor` the broker containers because daprd fails fatally if a component's backing service is unreachable at init.
 - Demo 03 runs **two named resources of the same project** (not `WithReplicas`) so they can be started one at a time during the talk.
 
-Dapr components live in `src/DaprDemos.AppHost/dapr/`: `pubsub.yaml` (Redis; `pubsub.rabbitmq.yaml.disabled` is the drop-in swap for demo 01 — the `.disabled` extension only prevents daprd loading two components named `pubsub`), `statestore.yaml`, `discord.yaml` (HTTP output binding), and `secretstore.yaml` (env-var secret store resolving `DISCORD_WEBHOOK_URL`).
+Dapr components live in `src/DaprDemos.AppHost/dapr/`: `pubsub.yaml` (Redis; `pubsub.rabbitmq.yaml.disabled` is the drop-in swap for demo 01 — the `.disabled` extension only prevents daprd loading two components named `pubsub`), `statestore.yaml`, `discord.yaml` (HTTP output binding), and `secretstore.yaml` (env-var secret store resolving `DISCORD_WEBHOOK_URL`). The same folder also holds `resiliency.yaml` (a `Resiliency` spec, not a component) — daprd loads it from the resources path.
+
+Two YAML settings are load-bearing for the demos and easy to break:
+
+- `statestore.yaml` sets `keyPrefix: none` so both demo 03 workers hit the same literal `demo-counter` key; with the default per-app-id prefix they would never contend and demo 03 would show nothing.
+- `resiliency.yaml` defines demo 02's visible retries (`constant`, 2 s, max 10, inbound on the `pubsub` component, scoped to `demo02-subscriber`). `pubsub.yaml`'s `processingTimeout: 60s` / `redeliverInterval: 15s` are deliberately set well above the ~20 s retry window so Redis's reclaim loop never delivers a duplicate on top of an in-flight retry.
 
 ### Shared projects
 
@@ -45,6 +50,6 @@ All demos follow the same vertical-slice CQRS shape: minimal-API or controller e
 
 Conventions that carry meaning here:
 
-- **Errors are values, never exceptions**: domain/application failures return `Result` failures with coded `Error`s (e.g. `Alert.EmptyTitle`); demo 02's whole point is that a failure `Result` → HTTP 500 → Dapr redelivery *is* the retry mechanism.
+- **Errors are values, never exceptions**: domain/application failures return `Result` failures with coded `Error`s (e.g. `Alert.EmptyTitle`); demo 02's whole point is that a failure `Result` → HTTP 500 → Dapr retry *is* the retry mechanism. Demo 02 has no arming endpoint: `FlakyDeliveryPlan` (singleton) rolls a random 1–5 planned failures per message id on first delivery and counts attempts, so `/publish` alone produces the retry sequence in the logs.
 - **HTTPS redirection is deliberately absent** in every app — it breaks Dapr sidecar communication.
 - Pub/sub subscribers use attribute-routed controllers with `[Topic]`; publishers use `DaprClient.PublishEventAsync` with names from `DaprDemos.Contracts`.

@@ -32,7 +32,7 @@ flowchart LR
     P -->|"publish · topic greetings"| PD
     PD ==> R ==> SD
     PD -.-> Q -.-> SD
-    SD -->|"POST /greetings"| S --> L
+    SD -->|"POST /greetings-handler"| S --> L
 
     classDef app fill:#E8F0FE,stroke:#3B5BA5,color:#12233F
     classDef car fill:#FFF3D6,stroke:#C08A18,color:#4A3400
@@ -51,22 +51,21 @@ sequenceDiagram
     participant D as Dapr sidecar
     participant R as Redis / RabbitMQ
 
-    C->>A: POST /fail-next/3
     C->>A: POST /publish
     A->>D: publish · topic flakymessages
     D->>R: store message
+    R->>D: deliver
+    Note right of A: FlakyDeliveryPlan rolls<br/>1–5 planned failures for this message
 
-    loop delivery 1, 2, 3
-        R->>D: deliver
-        D->>A: POST /flakymessages
+    loop planned failures (random 1–5)
+        D->>A: POST /flaky-messages-handler
         A-->>D: 500 — failure Result
-        Note right of D: not 2xx → redeliver
+        Note right of D: not 2xx → retry policy<br/>constant · 2s · max 10
     end
 
-    R->>D: deliver
-    D->>A: POST /flakymessages
+    D->>A: POST /flaky-messages-handler
     A-->>D: 200 OK — handled
-    Note over A,R: no retry code anywhere in the app
+    Note over A,R: retries live in resiliency.yaml — no retry code in the app
 ```
 
 ## Demo 03 — State store: ETags vs. lost updates

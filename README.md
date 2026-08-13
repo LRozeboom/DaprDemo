@@ -7,7 +7,7 @@ Four small, independent Dapr concept demos in one .NET 10 solution, orchestrated
 | Demo | Concept | Resources | Fixed port(s) |
 |------|---------|-----------|---------------|
 | 01 PubSub | Pub/sub through the sidecar; swap Redis → RabbitMQ with zero code changes | `demo01-publisher`, `demo01-subscriber` | 5101, 5102 |
-| 02 Retries | Non-2xx from a subscriber ⇒ Dapr redelivers; the Result pattern *is* the retry mechanism | `demo02-subscriber` | 5201 |
+| 02 Retries | Non-2xx from a subscriber ⇒ Dapr retries per a resiliency policy; the Result pattern *is* the retry mechanism | `demo02-subscriber` | 5201 |
 | 03 StateStore | Optimistic concurrency with ETags; without them concurrent writers lose updates | `demo03-worker-a`, `demo03-worker-b` | 5301, 5302 |
 | 04 Bindings | HTTP output binding to Discord behind a Clean Architecture `INotifier` | `demo04-api` | 5401 |
 
@@ -84,15 +84,29 @@ Restore afterwards: `git checkout -- src/DaprDemos.AppHost/dapr/pubsub.yaml`.
 Start `demo02-subscriber`, then:
 
 ```bash
-curl -X POST http://localhost:5201/fail-next/3
 curl -X POST http://localhost:5201/publish
 ```
 
-Watch the console logs: three ❌ `failing delivery on purpose — Dapr will redeliver` lines,
-then the success line on attempt 4. With the Redis component, redeliveries arrive ~5–6 s apart
-(`processingTimeout: 5s` + `redeliverInterval: 1s` in `pubsub.yaml`); after the demo 01 swap,
-RabbitMQ redelivers instantly. The subscriber's handler returns a failure `Result`, the
-controller maps it to HTTP 500, and Dapr does the rest — no retry code anywhere.
+There is nothing to arm first: every message rolls its own dice. `FlakyDeliveryPlan` picks a
+random **1–5** deliveries to fail per message id and counts the attempts, so the log tells the
+whole story:
+
+```text
+Failed Attempt 1 of 3 for message <id>: failing delivery on purpose — Dapr will redeliver
+Failed Attempt 2 of 3 ...
+Failed Attempt 3 of 3 ...
+Succeeded Attempt 4: processed message <id> after 3 failed deliveries
+```
+
+The retries come from `dapr/resiliency.yaml` — a `constant` policy, **2 s apart, max 10
+retries**, scoped to `demo02-subscriber` and bound to *inbound* deliveries of the `pubsub`
+component. Publish again to get a different number of failures. The subscriber's handler
+returns a failure `Result`, the controller maps it to HTTP 500, and Dapr does the rest — no
+retry code anywhere in the app.
+
+The broker's own redelivery is only a backstop: `pubsub.yaml` sets `processingTimeout: 60s` and
+`redeliverInterval: 15s`, comfortably above the ~20 s the retry policy can hold a message, so
+Redis never delivers a duplicate on top of a retry that is still running.
 
 ## Demo 03 — State store & ETag concurrency
 
@@ -141,7 +155,8 @@ curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json"
   is the container's plain-text port; 6379 is TLS).
 - **Pub/sub component:** `git checkout -- src/DaprDemos.AppHost/dapr/pubsub.yaml` if you did the swap.
 - **RabbitMQ queues:** purge via the management UI (Queues → purge) if a dry run left messages behind.
-- **Demo 02 attempt counters** are in-memory — restarting `demo02-subscriber` clears them.
+- **Demo 02** needs no reset: each `/publish` creates a new message id with a fresh failure
+  count. (The attempt counters are in-memory anyway — restarting `demo02-subscriber` clears them.)
 - Stopping the AppHost removes the containers; state does not survive between sessions.
 
 ## Environment notes
@@ -152,3 +167,6 @@ curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json"
   Dapr components therefore set `enableTLS: "true"` (Dapr's Redis client does not verify the
   certificate).
 - Component `initTimeout` is 120 s so a slow first container pull can't kill a sidecar.
+- The state store sets `keyPrefix: none`, so both demo 03 workers address the *same* literal
+  `demo-counter` key instead of one prefixed per app-id — that shared key is the whole point of
+  the demo (and it's why the `redis-cli DEL demo-counter` above works).
