@@ -69,15 +69,16 @@ var demo04Api = builder.AddProject<Projects.Demo04_Bindings_Api>("demo04-api", o
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(SidecarFor("demo04-api")));
 
-if (Environment.GetEnvironmentVariable("DEMO_AUTOSTART") != "true")
-{
-    IResourceBuilder<ProjectResource>[] demos =
-        [demo01Publisher, demo01Subscriber, demo02Subscriber, demo03Worker, demo04Api];
+IResourceBuilder<ProjectResource>[] demos =
+    [demo01Publisher, demo01Subscriber, demo02Subscriber, demo03Worker, demo04Api];
 
-    foreach (var demo in demos)
+foreach (var demo in demos)
+{
+    demo.WithUrlForEndpoint("http", url =>
     {
-        demo.WithExplicitStart();
-    }
+        url.Url = "/scalar";
+        url.DisplayText = "Scalar";
+    });
 }
 
 builder.Build().Run();
