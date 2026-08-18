@@ -16,11 +16,14 @@ public static class DependencyInjection
 
         services.AddSingleton(new CounterOptions(configuration.GetValue<bool>("USE_ETAGS")));
         services.AddSingleton<CounterStore>();
+        services.AddSingleton<RunSignal>();
 
         services.AddScoped<ICommandHandler<IncrementCounterCommand, int>, IncrementCounterCommandHandler>();
-        services.AddScoped<ICommandHandler<RunIncrementsCommand, RunSummary>, RunIncrementsCommandHandler>();
+        services.AddScoped<ICommandHandler<RunIncrementsCommand, Unit>, RunIncrementsCommandHandler>();
         services.AddScoped<ICommandHandler<ResetCounterCommand, Unit>, ResetCounterCommandHandler>();
         services.AddScoped<IQueryHandler<GetCounterQuery, int>, GetCounterQueryHandler>();
+
+        services.AddHostedService<CounterRunner>();
 
         return services;
     }

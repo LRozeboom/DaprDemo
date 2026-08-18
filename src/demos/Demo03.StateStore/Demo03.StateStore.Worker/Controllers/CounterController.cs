@@ -9,18 +9,22 @@ namespace Demo03.StateStore.Worker.Controllers;
 
 [ApiController]
 public sealed class CounterController(
-    ICommandHandler<RunIncrementsCommand, RunSummary> runHandler,
+    RunSignal runSignal,
     IQueryHandler<GetCounterQuery, int> getHandler,
     ICommandHandler<ResetCounterCommand, Unit> resetHandler) : ControllerBase
 {
+    // Returns as soon as the run is queued: two curls issued back to back leave both workers
+    // running at the same time, which is what puts the two processes in contention.
     [HttpPost("/run")]
-    public async Task<IActionResult> RunAsync(CancellationToken cancellationToken)
+    public IActionResult Run()
     {
-        var result = await runHandler.HandleAsync(new RunIncrementsCommand(), cancellationToken);
+        runSignal.Trigger();
 
-        return result.Match<IActionResult>(
-            Ok,
-            error => BadRequest(new { error.Code, error.Message }));
+        return Accepted(new
+        {
+            iterations = RunIncrementsCommandHandler.Iterations,
+            concurrency = RunIncrementsCommandHandler.Concurrency
+        });
     }
 
     [HttpGet("/counter")]
