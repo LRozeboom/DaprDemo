@@ -46,10 +46,10 @@ Two YAML settings are load-bearing for the demos and easy to break:
 
 ### Demo apps (src/demos/)
 
-All demos follow the same vertical-slice CQRS shape: minimal-API or controller endpoint → `ICommandHandler`/`IQueryHandler` → `Result<T>` mapped back to an HTTP status via `Match`. Each app has a `DependencyInjection.cs` registering its handlers. Demo 04 additionally splits into Domain/Application/Infrastructure/Api projects to demonstrate Clean Architecture — the application layer depends only on `INotifier`; the Dapr binding call lives in `DiscordBindingNotifier` in Infrastructure.
+All demos follow the same vertical-slice CQRS shape: attribute-routed controller action (in each app's `Controllers/` folder; no minimal APIs — every app calls `AddControllers()` + `MapControllers()`) → `ICommandHandler`/`IQueryHandler` → `Result<T>` mapped back to an HTTP status via `Match`. Each app has a `DependencyInjection.cs` registering its handlers. Demo 04 additionally splits into Domain/Application/Infrastructure/Api projects to demonstrate Clean Architecture — the application layer depends only on `INotifier`; the Dapr binding call lives in `DiscordBindingNotifier` in Infrastructure.
 
 Conventions that carry meaning here:
 
 - **Errors are values, never exceptions**: domain/application failures return `Result` failures with coded `Error`s (e.g. `Alert.EmptyTitle`); demo 02's whole point is that a failure `Result` → HTTP 500 → Dapr retry *is* the retry mechanism. Demo 02 has no arming endpoint: `FlakyDeliveryPlan` (singleton) rolls a random 1–5 planned failures per message id on first delivery and counts attempts, so `/publish` alone produces the retry sequence in the logs.
 - **HTTPS redirection is deliberately absent** in every app — it breaks Dapr sidecar communication.
-- Pub/sub subscribers use attribute-routed controllers with `[Topic]`; publishers use `DaprClient.PublishEventAsync` with names from `DaprDemos.Contracts`.
+- Pub/sub subscriber actions carry `[Topic]` (those apps also need `AddControllers().AddDapr()` plus `UseCloudEvents()`/`MapSubscribeHandler()`); publishers use `DaprClient.PublishEventAsync` with names from `DaprDemos.Contracts`.
