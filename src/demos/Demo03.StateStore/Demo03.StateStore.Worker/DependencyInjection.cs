@@ -23,7 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<ResetCounterCommand, Unit>, ResetCounterCommandHandler>();
         services.AddScoped<IQueryHandler<GetCounterQuery, int>, GetCounterQueryHandler>();
 
-        services.AddHostedService<CounterRunner>();
+        services.AddHostedService<RunIncrementsProcessor>();
 
         return services;
     }

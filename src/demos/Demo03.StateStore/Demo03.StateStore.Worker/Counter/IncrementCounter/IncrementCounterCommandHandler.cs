@@ -13,7 +13,8 @@ public sealed class IncrementCounterCommandHandler(
     {
         if (!options.UseETags)
         {
-            // Plain read-modify-write: two workers doing this concurrently WILL lose updates.
+            // Plain read-modify-write: concurrent callers WILL lose updates — whether they are
+            // the loops inside one run or two workers in separate processes.
             var current = await counterStore.GetAsync(cancellationToken);
             var next = current + 1;
             await counterStore.SaveAsync(next, cancellationToken);

@@ -110,9 +110,9 @@ Redis never delivers a duplicate on top of a retry that is still running.
 
 ## Demo 03 — State store & ETag concurrency
 
-Start `demo03-worker-a`. One run issues 200 increments against the same state key
-(`demo-counter`) from **4 concurrent loops**, so a single worker already races itself through
-the state store — the demo does not depend on two curls overlapping in your shell.
+Start `demo03-worker-a`. One run issues 2000 increments against the same state key
+(`demo-counter`) from **4 concurrent loops**, so a single worker already races itself through the
+state store — the reveal needs one worker and one click, nothing has to be timed.
 
 ```bash
 curl -X POST http://localhost:5301/reset
@@ -121,17 +121,19 @@ curl -X POST http://localhost:5301/run
 curl http://localhost:5301/counter
 ```
 
-- Default (`USE_ETAGS=false`): all 200 increments report success, but `/counter` ends **well
-  below 200** — concurrent read-modify-write silently loses updates. The 🏁 line's
-  `last observed counter value` already lags the 200 writes that "succeeded".
+- Default (`USE_ETAGS=false`): all 2000 increments report success, but `/counter` ends **well
+  below 2000** — concurrent read-modify-write silently loses updates. The 🏁 line's
+  `last observed counter value` already lags the 2000 writes that "succeeded".
 - Set `USE_ETAGS=true` (environment variable before launching the AppHost — it feeds the
-  `use-etags` parameter) and repeat: `/counter` ends at **exactly 200**. The handler's ETag
-  retry loop (`IncrementCounterCommandHandler`) is the only difference.
+  `use-etags` parameter) and repeat: `/counter` ends at **exactly 2000**. The handler's ETag
+  retry loop (`IncrementCounterCommandHandler`) is the only difference. Note this run takes
+  noticeably longer — losing the race and retrying is the price of not losing writes.
 
 **Across processes too:** start `demo03-worker-b` as well and hit both — the same race spans two
 separate applications, which is why this is a state-store concern rather than a `lock` you could
-write in-process. Because `/run` returns immediately, issuing the two curls back to back is
-enough to leave both workers running at once:
+write in-process. A run lasts around 10 s, which is the point of the iteration count: it leaves
+time to arm the second worker (a second terminal, or the other Scalar tab at
+<http://localhost:5302/scalar>) while the first is still going.
 
 ```bash
 curl -X POST http://localhost:5301/reset
@@ -141,7 +143,8 @@ curl -X POST http://localhost:5302/run
 curl http://localhost:5301/counter
 ```
 
-Expect **well below 400** without ETags and **exactly 400** with them.
+Expect **well below 4000** without ETags and **exactly 4000** with them. If you get exactly 4000
+without ETags, the two runs did not overlap — reset and start the second worker sooner.
 
 ## Demo 04 — Output binding to Discord
 

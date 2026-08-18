@@ -15,7 +15,8 @@ public sealed class RunIncrementsCommandHandler(
     ILogger<RunIncrementsCommandHandler> logger) : ICommandHandler<RunIncrementsCommand, Unit>
 {
     public const int Concurrency = 4;
-    public const int IterationsPerLoop = 50;
+
+    public const int IterationsPerLoop = 500;
     public const int Iterations = Concurrency * IterationsPerLoop;
 
     public async Task<Result<Unit>> HandleAsync(
