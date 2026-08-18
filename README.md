@@ -116,12 +116,16 @@ Start `demo03-worker-a` and `demo03-worker-b`. Both increment the same state key
 ```bash
 curl -X POST http://localhost:5301/reset
 curl -X POST http://localhost:5301/run & curl -X POST http://localhost:5302/run
-# wait for both 🏁 "Run finished" log lines, then:
+# /run is synchronous (a few seconds): both curls return their own run summary, then:
 curl http://localhost:5301/counter
 ```
 
+Each `/run` responds with that worker's own tally, e.g.
+`{"iterations":200,"succeeded":200,"failed":0,"lastObserved":347}`, and logs the same numbers
+in its 🏁 `Run finished` line.
+
 - Default (`USE_ETAGS=false`): the counter ends **well below 400** — plain read-modify-write
-  loses updates. Each worker's 🏁 log line shows what it observed.
+  loses updates. Each worker's `lastObserved` shows what it saw along the way.
 - Set `USE_ETAGS=true` (environment variable before launching the AppHost — it feeds the
   `use-etags` parameter) and repeat: the counter ends at **exactly 400**. The handler's ETag
   retry loop (`IncrementCounterCommandHandler`) is the only difference.

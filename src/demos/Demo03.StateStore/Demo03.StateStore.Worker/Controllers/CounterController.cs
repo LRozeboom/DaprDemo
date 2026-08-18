@@ -1,23 +1,26 @@
 using DaprDemos.SharedKernel.Messaging;
 using DaprDemos.SharedKernel.Results;
-using Demo03.StateStore.Worker.Counter;
 using Demo03.StateStore.Worker.Counter.GetCounter;
 using Demo03.StateStore.Worker.Counter.ResetCounter;
+using Demo03.StateStore.Worker.Counter.RunIncrements;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Demo03.StateStore.Worker.Controllers;
 
 [ApiController]
 public sealed class CounterController(
-    RunSignal runSignal,
+    ICommandHandler<RunIncrementsCommand, RunSummary> runHandler,
     IQueryHandler<GetCounterQuery, int> getHandler,
     ICommandHandler<ResetCounterCommand, Unit> resetHandler) : ControllerBase
 {
     [HttpPost("/run")]
-    public IActionResult Run()
+    public async Task<IActionResult> RunAsync(CancellationToken cancellationToken)
     {
-        runSignal.Trigger();
-        return Accepted(new { iterations = CounterRunner.Iterations });
+        var result = await runHandler.HandleAsync(new RunIncrementsCommand(), cancellationToken);
+
+        return result.Match<IActionResult>(
+            Ok,
+            error => BadRequest(new { error.Code, error.Message }));
     }
 
     [HttpGet("/counter")]
