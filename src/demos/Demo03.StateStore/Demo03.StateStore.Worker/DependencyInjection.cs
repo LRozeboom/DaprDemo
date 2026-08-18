@@ -10,15 +10,14 @@ namespace Demo03.StateStore.Worker;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddDaprClient();
 
-        services.AddSingleton(new CounterOptions(configuration.GetValue<bool>("USE_ETAGS")));
         services.AddSingleton<CounterStore>();
         services.AddSingleton<RunSignal>();
 
-        services.AddScoped<ICommandHandler<IncrementCounterCommand, int>, IncrementCounterCommandHandler>();
+        services.AddScoped<ICommandHandler<IncrementCounterCommand, IncrementCounterResult>, IncrementCounterCommandHandler>();
         services.AddScoped<ICommandHandler<RunIncrementsCommand, Unit>, RunIncrementsCommandHandler>();
         services.AddScoped<ICommandHandler<ResetCounterCommand, Unit>, ResetCounterCommandHandler>();
         services.AddScoped<IQueryHandler<GetCounterQuery, int>, GetCounterQueryHandler>();

@@ -6,16 +6,18 @@ namespace Demo03.StateStore.Worker.Counter.RunIncrements;
 
 /// <summary>
 /// The loops run <see cref="Concurrency"/>-wide *within* one run, so a single worker already
-/// races itself through the state store: the lost-update effect never depends on two workers
-/// happening to overlap. Running both workers then shows the same race across processes.
+/// races itself through the state store and the conflict count is never zero. Running both
+/// workers then shows the same contention across processes.
 /// </summary>
 public sealed class RunIncrementsCommandHandler(
-    ICommandHandler<IncrementCounterCommand, int> incrementHandler,
-    CounterOptions options,
+    ICommandHandler<IncrementCounterCommand, IncrementCounterResult> incrementHandler,
     ILogger<RunIncrementsCommandHandler> logger) : ICommandHandler<RunIncrementsCommand, Unit>
 {
     public const int Concurrency = 4;
 
+    // Sized by wall-clock, not by the total: a run has to still be going when you arm the second
+    // worker, and switching browser tabs in the Scalar UI costs a few seconds. ~10 s of run gives
+    // room to do that; anything near 1 s and worker A is always finished before B starts.
     public const int IterationsPerLoop = 500;
     public const int Iterations = Concurrency * IterationsPerLoop;
 
@@ -24,10 +26,9 @@ public sealed class RunIncrementsCommandHandler(
         CancellationToken cancellationToken)
     {
         logger.LogInformation(
-            "Starting {Iterations} read-modify-write increments across {Concurrency} concurrent loops (ETags: {UseETags})",
+            "Starting {Iterations} ETag-guarded increments across {Concurrency} concurrent loops",
             Iterations,
-            Concurrency,
-            options.UseETags);
+            Concurrency);
 
         // Safe to share the handler across the loops: it and CounterStore are stateless, and
         // DaprClient is thread-safe.
@@ -38,12 +39,14 @@ public sealed class RunIncrementsCommandHandler(
         var results = await Task.WhenAll(loops);
 
         var failed = results.Sum(result => result.Failed);
+        var conflicts = results.Sum(result => result.Conflicts);
         var lastObserved = results.Max(result => result.LastObserved);
 
         logger.LogInformation(
-            "Run finished: {Succeeded} increments succeeded, {Failures} failed, last observed counter value {LastObserved}",
+            "Run finished: {Succeeded} increments succeeded, {Failures} failed, {Conflicts} ETag conflicts detected and retried, last observed counter value {LastObserved}",
             Iterations - failed,
             failed,
+            conflicts,
             lastObserved);
 
         return Unit.Value;
@@ -52,6 +55,7 @@ public sealed class RunIncrementsCommandHandler(
     private async Task<LoopResult> RunLoopAsync(CancellationToken cancellationToken)
     {
         var failed = 0;
+        var conflicts = 0;
         var lastObserved = 0;
 
         for (var i = 0; i < IterationsPerLoop; i++)
@@ -60,7 +64,8 @@ public sealed class RunIncrementsCommandHandler(
 
             if (result.IsSuccess)
             {
-                lastObserved = result.Value;
+                lastObserved = result.Value.Value;
+                conflicts += result.Value.Attempts - 1;
             }
             else
             {
@@ -72,8 +77,8 @@ public sealed class RunIncrementsCommandHandler(
             await Task.Delay(Random.Shared.Next(1, 11), cancellationToken);
         }
 
-        return new LoopResult(failed, lastObserved);
+        return new LoopResult(failed, conflicts, lastObserved);
     }
 
-    private readonly record struct LoopResult(int Failed, int LastObserved);
+    private readonly record struct LoopResult(int Failed, int Conflicts, int LastObserved);
 }

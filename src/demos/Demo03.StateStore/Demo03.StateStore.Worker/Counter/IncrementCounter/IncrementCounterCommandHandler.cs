@@ -4,24 +4,17 @@ using DaprDemos.SharedKernel.Results;
 namespace Demo03.StateStore.Worker.Counter.IncrementCounter;
 
 public sealed class IncrementCounterCommandHandler(
-    CounterStore counterStore,
-    CounterOptions options) : ICommandHandler<IncrementCounterCommand, int>
+    CounterStore counterStore) : ICommandHandler<IncrementCounterCommand, IncrementCounterResult>
 {
     private const int MaxAttempts = 20;
 
-    public async Task<Result<int>> HandleAsync(IncrementCounterCommand command, CancellationToken cancellationToken)
+    public async Task<Result<IncrementCounterResult>> HandleAsync(
+        IncrementCounterCommand command,
+        CancellationToken cancellationToken)
     {
-        if (!options.UseETags)
-        {
-            // Plain read-modify-write: concurrent callers WILL lose updates — whether they are
-            // the loops inside one run or two workers in separate processes.
-            var current = await counterStore.GetAsync(cancellationToken);
-            var next = current + 1;
-            await counterStore.SaveAsync(next, cancellationToken);
-            return next;
-        }
-
-        // Bounded ETag retry loop with jitter;
+        // Optimistic concurrency: read the value together with its ETag, then write back only if
+        // nobody has touched the key since. Losing that race is an expected outcome, not an error —
+        // the write is rejected, and this loop re-reads and tries again with jitter.
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             var (current, etag) = await counterStore.GetWithETagAsync(cancellationToken);
@@ -29,7 +22,7 @@ public sealed class IncrementCounterCommandHandler(
 
             if (await counterStore.TrySaveAsync(next, etag, cancellationToken))
             {
-                return next;
+                return new IncrementCounterResult(next, attempt);
             }
 
             await Task.Delay(Random.Shared.Next(1, 15), cancellationToken);

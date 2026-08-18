@@ -8,7 +8,7 @@ Four small, independent Dapr concept demos in one .NET 10 solution, orchestrated
 |------|---------|-----------|---------------|
 | 01 PubSub | Pub/sub through the sidecar; swap Redis → RabbitMQ with zero code changes | `demo01-publisher`, `demo01-subscriber` | 5101, 5102 |
 | 02 Retries | Non-2xx from a subscriber ⇒ Dapr retries per a resiliency policy; the Result pattern *is* the retry mechanism | `demo02-subscriber` | 5201 |
-| 03 StateStore | Optimistic concurrency with ETags; without them concurrent writers lose updates | `demo03-worker-a`, `demo03-worker-b` | 5301, 5302 |
+| 03 StateStore | Optimistic concurrency: concurrent writers collide on one key, ETags catch it and retry | `demo03-worker-a`, `demo03-worker-b` | 5301, 5302 |
 | 04 Bindings | HTTP output binding to Discord behind a Clean Architecture `INotifier` | `demo04-api` | 5401 |
 
 Shared infrastructure starts eagerly so containers are warm before the talk:
@@ -121,18 +121,23 @@ curl -X POST http://localhost:5301/run
 curl http://localhost:5301/counter
 ```
 
-- Default (`USE_ETAGS=false`): all 2000 increments report success, but `/counter` ends **well
-  below 2000** — concurrent read-modify-write silently loses updates. The 🏁 line's
-  `last observed counter value` already lags the 2000 writes that "succeeded".
-- Set `USE_ETAGS=true` (environment variable before launching the AppHost — it feeds the
-  `use-etags` parameter) and repeat: `/counter` ends at **exactly 2000**. The handler's ETag
-  retry loop (`IncrementCounterCommandHandler`) is the only difference. Note this run takes
-  noticeably longer — losing the race and retrying is the price of not losing writes.
+Every increment reads the value **with its ETag** and writes back only if nobody has touched the
+key since (`IncrementCounterCommandHandler`). The payoff is the 🏁 line:
 
-**Across processes too:** start `demo03-worker-b` as well and hit both — the same race spans two
-separate applications, which is why this is a state-store concern rather than a `lock` you could
-write in-process. A run lasts around 10 s, which is the point of the iteration count: it leaves
-time to arm the second worker (a second terminal, or the other Scalar tab at
+```
+Run finished: 2000 increments succeeded, 0 failed, 743 ETag conflicts detected and retried,
+last observed counter value 2000
+```
+
+`/counter` ends at **exactly 2000**. The conflict count is the interesting number — it is the
+count of writes that *would* have been silently lost under a naive read-modify-write, each one
+rejected by the store and retried instead. Losing the race is a normal outcome here, not an
+error: the handler re-reads and tries again, up to `MaxAttempts`.
+
+**Across processes too:** start `demo03-worker-b` as well and hit both — the same contention spans
+two separate applications, which is why this belongs in the state store rather than in a `lock`
+you could write in-process. A run lasts around 10 s, which is the point of the iteration count: it
+leaves time to arm the second worker (a second terminal, or the other Scalar tab at
 <http://localhost:5302/scalar>) while the first is still going.
 
 ```bash
@@ -143,8 +148,9 @@ curl -X POST http://localhost:5302/run
 curl http://localhost:5301/counter
 ```
 
-Expect **well below 4000** without ETags and **exactly 4000** with them. If you get exactly 4000
-without ETags, the two runs did not overlap — reset and start the second worker sooner.
+**Exactly 4000**, with a markedly higher conflict count on both workers — eight concurrent writers
+instead of four. If the conflict counts come back near zero, the two runs did not overlap; reset
+and start the second worker sooner.
 
 ## Demo 04 — Output binding to Discord
 

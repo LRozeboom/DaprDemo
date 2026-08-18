@@ -13,10 +13,6 @@ var rabbitmq = builder
     .AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5673)
     .WithManagementPlugin(port: 15672);
 
-var useEtags = builder.AddParameter(
-    "use-etags",
-    Environment.GetEnvironmentVariable("USE_ETAGS") ?? "false");
-
 var daprResourcesPath = Path.Combine(builder.AppHostDirectory, "dapr");
 
 DaprSidecarOptions SidecarFor(string appId) => new()
@@ -61,7 +57,6 @@ var demo02Subscriber = builder.AddProject<Projects.Demo02_Retries_Subscriber>("d
 var demo03WorkerA = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03-worker-a", options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(port: 5301)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithEnvironment("USE_ETAGS", useEtags)
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(SidecarFor("demo03-worker-a"))
         .WaitFor(redis))
@@ -70,7 +65,6 @@ var demo03WorkerA = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo0
 var demo03WorkerB = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03-worker-b", options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(port: 5302)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithEnvironment("USE_ETAGS", useEtags)
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(SidecarFor("demo03-worker-b"))
         .WaitFor(redis))

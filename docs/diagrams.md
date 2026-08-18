@@ -68,30 +68,30 @@ sequenceDiagram
     Note over A,R: retries live in resiliency.yaml — no retry code in the app
 ```
 
-## Demo 03 — State store: ETags vs. lost updates
+## Demo 03 — State store: optimistic concurrency with ETags
 
 ```mermaid
 flowchart LR
-    A["demo03-worker-a<br/>:5301"]:::app
-    B["demo03-worker-b<br/>:5302"]:::app
+    A["demo03-worker-a<br/>:5301<br/>4 concurrent loops"]:::app
+    B["demo03-worker-b<br/>:5302<br/>4 concurrent loops"]:::app
     DA["daprd"]:::car
     DB["daprd"]:::car
     K[("Redis state store<br/>key: demo-counter")]:::ext
 
-    A -->|"200 × increment"| DA --> K
-    B -->|"200 × increment"| DB --> K
+    A -->|"2000 × increment"| DA --> K
+    B -->|"2000 × increment"| DB --> K
 
-    K -.->|"USE_ETAGS = false"| NO["read → +1 → write<br/>last writer wins"]:::bad
-    K -.->|"USE_ETAGS = true"| YES["read + ETag → write only if unchanged<br/>conflict → retry"]:::good
+    K -.->|"read value + ETag"| RMW["+1, write only if<br/>the ETag still matches"]:::good
+    RMW -.->|"ETag stale — someone else wrote"| RETRY["rejected → re-read → retry"]:::warn
+    RETRY -.-> RMW
 
-    NO --> R1(["counter &lt; 400 · updates lost"]):::bad
-    YES --> R2(["counter = 400"]):::good
+    RMW --> R(["counter = 4000 · every conflict retried, none lost"]):::good
 
     classDef app fill:#E8F0FE,stroke:#3B5BA5,color:#12233F
     classDef car fill:#FFF3D6,stroke:#C08A18,color:#4A3400
     classDef ext fill:#EDEAF8,stroke:#6C5CB5,color:#241D4B
     classDef good fill:#E3F5E8,stroke:#2E8B57,color:#12331F
-    classDef bad fill:#FDE8E8,stroke:#C0392B,color:#3F1412
+    classDef warn fill:#FFF3D6,stroke:#C08A18,color:#4A3400
 ```
 
 ## Demo 04 — Output binding to Discord
