@@ -6,7 +6,14 @@ re-export, paste a block below into <https://mermaid.live> (SVG stays crisp when
 or re-render everything with:
 
 ```bash
-npx @mermaid-js/mermaid-cli -i docs/diagrams.md -o /tmp/out.md -e png -b white -s 2
+# from the repo root — mermaid-cli names the exports after the -o file, in document order
+npx -y @mermaid-js/mermaid-cli -i docs/diagrams.md -o docs/images/out.md -e png -b white -s 2
+cd docs/images
+mv out-1.png demo01-pubsub.png
+mv out-2.png demo02-retries.png
+mv out-3.png demo03-statestore.png
+mv out-4.png demo04-bindings.png
+rm out.md
 ```
 
 Legend used in all four: **blue** = our code, **amber** = the Dapr sidecar,
