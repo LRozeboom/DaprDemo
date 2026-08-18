@@ -29,13 +29,13 @@ There are no test projects. Verification is manual: launch the AppHost (needs Do
 - **Fixed non-default host ports** because `dapr init` owns 6379 and 5672 is commonly taken. The Dapr component YAMLs under `src/DaprDemos.AppHost/dapr/` hard-code these localhost addresses, so ports/credentials must match on both sides.
 - **App health checks on sidecars are load-bearing**: sidecars start eagerly while apps are explicit-start; daprd only registers pub/sub subscriptions once the app's `/health` probe succeeds.
 - Sidecars `WaitFor` the broker containers because daprd fails fatally if a component's backing service is unreachable at init.
-- Demo 03 runs **two named resources of the same project** (not `WithReplicas`) so they can be started one at a time during the talk.
+- Demo 03 is a single worker (`demo03-worker`, port 5301) with three state-backed endpoints. It was deliberately reduced from a two-worker concurrency setup: the point is that Dapr abstracts the state store away, and the contention apparatus distracted from it. Don't add load generators or extra workers back.
 
 Dapr components live in `src/DaprDemos.AppHost/dapr/`: `pubsub.yaml` (Redis; `pubsub.rabbitmq.yaml.disabled` is the drop-in swap for demo 01 — the `.disabled` extension only prevents daprd loading two components named `pubsub`), `statestore.yaml`, `discord.yaml` (HTTP output binding), and `secretstore.yaml` (env-var secret store resolving `DISCORD_WEBHOOK_URL`). The same folder also holds `resiliency.yaml` (a `Resiliency` spec, not a component) — daprd loads it from the resources path.
 
 Two YAML settings are load-bearing for the demos and easy to break:
 
-- `statestore.yaml` sets `keyPrefix: none` so both demo 03 workers hit the same literal `demo-counter` key; with the default per-app-id prefix they would never contend and demo 03 would show nothing.
+- `statestore.yaml` sets `keyPrefix: none` so the key in Redis is the literal `demo-counter` the code names, rather than the default per-app-id `demo03-worker||demo-counter` — it keeps the redis-cli inspection in the README honest.
 - `resiliency.yaml` defines demo 02's visible retries (`constant`, 2 s, max 10, inbound on the `pubsub` component, scoped to `demo02-subscriber`). `pubsub.yaml`'s `processingTimeout: 60s` / `redeliverInterval: 15s` are deliberately set well above the ~20 s retry window so Redis's reclaim loop never delivers a duplicate on top of an in-flight retry.
 
 ### Shared projects

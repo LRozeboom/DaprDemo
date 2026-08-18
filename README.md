@@ -8,7 +8,7 @@ Four small, independent Dapr concept demos in one .NET 10 solution, orchestrated
 |------|---------|-----------|---------------|
 | 01 PubSub | Pub/sub through the sidecar; swap Redis → RabbitMQ with zero code changes | `demo01-publisher`, `demo01-subscriber` | 5101, 5102 |
 | 02 Retries | Non-2xx from a subscriber ⇒ Dapr retries per a resiliency policy; the Result pattern *is* the retry mechanism | `demo02-subscriber` | 5201 |
-| 03 StateStore | Optimistic concurrency: concurrent writers collide on one key, ETags catch it and retry | `demo03-worker-a`, `demo03-worker-b` | 5301, 5302 |
+| 03 StateStore | State through the sidecar — no Redis client in the app; ETags for optimistic concurrency | `demo03-worker` | 5301 |
 | 04 Bindings | HTTP output binding to Discord behind a Clean Architecture `INotifier` | `demo04-api` | 5401 |
 
 Shared infrastructure starts eagerly so containers are warm before the talk:
@@ -42,7 +42,7 @@ Every demo app serves a [Scalar](https://scalar.com/) API reference at `/scalar`
 
 - Demo 01: <http://localhost:5101/scalar> (publisher)
 - Demo 02: <http://localhost:5201/scalar>
-- Demo 03: <http://localhost:5301/scalar> (worker A) / <http://localhost:5302/scalar> (worker B)
+- Demo 03: <http://localhost:5301/scalar>
 - Demo 04: <http://localhost:5401/scalar>
 
 ### How a demo starts
@@ -108,49 +108,34 @@ The broker's own redelivery is only a backstop: `pubsub.yaml` sets `processingTi
 `redeliverInterval: 15s`, comfortably above the ~20 s the retry policy can hold a message, so
 Redis never delivers a duplicate on top of a retry that is still running.
 
-## Demo 03 — State store & ETag concurrency
+## Demo 03 — State store
 
-Start `demo03-worker-a`. One run issues 2000 increments against the same state key
-(`demo-counter`) from **4 concurrent loops**, so a single worker already races itself through the
-state store — the reveal needs one worker and one click, nothing has to be timed.
-
-```bash
-curl -X POST http://localhost:5301/reset
-curl -X POST http://localhost:5301/run
-# 202 comes back immediately; wait for the 🏁 "Run finished" log line, then:
-curl http://localhost:5301/counter
-```
-
-Every increment reads the value **with its ETag** and writes back only if nobody has touched the
-key since (`IncrementCounterCommandHandler`). The payoff is the 🏁 line:
-
-```
-Run finished: 2000 increments succeeded, 0 failed, 743 ETag conflicts detected and retried,
-last observed counter value 2000
-```
-
-`/counter` ends at **exactly 2000**. The conflict count is the interesting number — it is the
-count of writes that *would* have been silently lost under a naive read-modify-write, each one
-rejected by the store and retried instead. Losing the race is a normal outcome here, not an
-error: the handler re-reads and tries again, up to `MaxAttempts`.
-
-**Across processes too:** start `demo03-worker-b` as well and hit both — the same contention spans
-two separate applications, which is why this belongs in the state store rather than in a `lock`
-you could write in-process. A run lasts around 10 s, which is the point of the iteration count: it
-leaves time to arm the second worker (a second terminal, or the other Scalar tab at
-<http://localhost:5302/scalar>) while the first is still going.
+Start `demo03-worker`. Three endpoints, all backed by the Dapr state store — one counter under
+the key `demo-counter`:
 
 ```bash
-curl -X POST http://localhost:5301/reset
-curl -X POST http://localhost:5301/run
-curl -X POST http://localhost:5302/run
-# wait for both 🏁 lines, then:
-curl http://localhost:5301/counter
+curl http://localhost:5301/counter                    # read
+curl -X POST http://localhost:5301/counter/increment  # read-modify-write
+curl -X POST http://localhost:5301/counter/reset      # back to 0
 ```
 
-**Exactly 4000**, with a markedly higher conflict count on both workers — eight concurrent writers
-instead of four. If the conflict counts come back near zero, the two runs did not overlap; reset
-and start the second worker sooner.
+```json
+{"value":3,"etag":"3"}
+```
+
+The point is what the app *doesn't* contain: no Redis client, no connection string, no
+serializer. `CounterStore` is the entire storage layer, and it names a component and a key —
+nothing else. Swapping Redis for Postgres or Cosmos is an edit to `statestore.yaml` with no code
+touched.
+
+**ETags:** `/counter` hands back the ETag the store currently holds for the key, and it changes on
+every write. `IncrementCounterCommandHandler` reads the value *together with* its ETag and writes
+back only if that ETag still matches, so a concurrent writer cannot be silently overwritten — the
+store rejects the write, and the handler re-reads and tries again (up to `MaxAttempts`). That is
+optimistic concurrency you get from the state store instead of writing yourself.
+
+Talking point: the value survives restarts of the app but not of the Redis container — stopping
+the AppHost takes the state with it.
 
 ## Demo 04 — Output binding to Discord
 
@@ -176,7 +161,7 @@ curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json"
 
 ## Reset between dry runs
 
-- **Counter:** `curl -X POST http://localhost:5301/reset` (or delete the key directly:
+- **Counter:** `curl -X POST http://localhost:5301/counter/reset` (or delete the key directly:
   `docker exec <redis-container> redis-cli -p 6380 -a daprdemos DEL demo-counter` — port 6380
   is the container's plain-text port; 6379 is TLS).
 - **Pub/sub component:** `git checkout -- src/DaprDemos.AppHost/dapr/pubsub.yaml` if you did the swap.
@@ -193,6 +178,6 @@ curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json"
   Dapr components therefore set `enableTLS: "true"` (Dapr's Redis client does not verify the
   certificate).
 - Component `initTimeout` is 120 s so a slow first container pull can't kill a sidecar.
-- The state store sets `keyPrefix: none`, so both demo 03 workers address the *same* literal
-  `demo-counter` key instead of one prefixed per app-id — that shared key is the whole point of
-  the demo (and it's why the `redis-cli DEL demo-counter` above works).
+- The state store sets `keyPrefix: none`, so the key in Redis is the literal `demo-counter` the
+  code names rather than the default per-app-id `demo03-worker||demo-counter` — which is why the
+  `redis-cli DEL demo-counter` above works.

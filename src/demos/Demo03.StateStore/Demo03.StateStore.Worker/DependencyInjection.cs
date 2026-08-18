@@ -4,7 +4,6 @@ using Demo03.StateStore.Worker.Counter;
 using Demo03.StateStore.Worker.Counter.GetCounter;
 using Demo03.StateStore.Worker.Counter.IncrementCounter;
 using Demo03.StateStore.Worker.Counter.ResetCounter;
-using Demo03.StateStore.Worker.Counter.RunIncrements;
 
 namespace Demo03.StateStore.Worker;
 
@@ -15,14 +14,10 @@ public static class DependencyInjection
         services.AddDaprClient();
 
         services.AddSingleton<CounterStore>();
-        services.AddSingleton<RunSignal>();
 
-        services.AddScoped<ICommandHandler<IncrementCounterCommand, IncrementCounterResult>, IncrementCounterCommandHandler>();
-        services.AddScoped<ICommandHandler<RunIncrementsCommand, Unit>, RunIncrementsCommandHandler>();
+        services.AddScoped<IQueryHandler<GetCounterQuery, CounterState>, GetCounterQueryHandler>();
+        services.AddScoped<ICommandHandler<IncrementCounterCommand, int>, IncrementCounterCommandHandler>();
         services.AddScoped<ICommandHandler<ResetCounterCommand, Unit>, ResetCounterCommandHandler>();
-        services.AddScoped<IQueryHandler<GetCounterQuery, int>, GetCounterQueryHandler>();
-
-        services.AddHostedService<RunIncrementsProcessor>();
 
         return services;
     }

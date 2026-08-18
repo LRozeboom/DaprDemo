@@ -4,28 +4,25 @@ using DaprDemos.SharedKernel.Results;
 namespace Demo03.StateStore.Worker.Counter.IncrementCounter;
 
 public sealed class IncrementCounterCommandHandler(
-    CounterStore counterStore) : ICommandHandler<IncrementCounterCommand, IncrementCounterResult>
+    CounterStore counterStore) : ICommandHandler<IncrementCounterCommand, int>
 {
     private const int MaxAttempts = 20;
 
-    public async Task<Result<IncrementCounterResult>> HandleAsync(
+    public async Task<Result<int>> HandleAsync(
         IncrementCounterCommand command,
         CancellationToken cancellationToken)
     {
-        // Optimistic concurrency: read the value together with its ETag, then write back only if
-        // nobody has touched the key since. Losing that race is an expected outcome, not an error —
-        // the write is rejected, and this loop re-reads and tries again with jitter.
+        // Optimistic concurrency, for free from the state store: read the value together with its
+        // ETag, then write back only if nobody has touched the key since. If someone has, the
+        // store rejects the write and we re-read and try again rather than clobbering them.
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             var (current, etag) = await counterStore.GetWithETagAsync(cancellationToken);
-            var next = current + 1;
 
-            if (await counterStore.TrySaveAsync(next, etag, cancellationToken))
+            if (await counterStore.TrySaveAsync(current + 1, etag, cancellationToken))
             {
-                return new IncrementCounterResult(next, attempt);
+                return current + 1;
             }
-
-            await Task.Delay(Random.Shared.Next(1, 15), cancellationToken);
         }
 
         return CounterErrors.ConcurrencyConflict(CounterStore.Key);

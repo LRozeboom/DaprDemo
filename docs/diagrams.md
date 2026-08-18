@@ -68,24 +68,22 @@ sequenceDiagram
     Note over A,R: retries live in resiliency.yaml — no retry code in the app
 ```
 
-## Demo 03 — State store: optimistic concurrency with ETags
+## Demo 03 — State store through the sidecar
 
 ```mermaid
 flowchart LR
-    A["demo03-worker-a<br/>:5301<br/>4 concurrent loops"]:::app
-    B["demo03-worker-b<br/>:5302<br/>4 concurrent loops"]:::app
-    DA["daprd"]:::car
-    DB["daprd"]:::car
+    C["GET /counter<br/>POST /counter/increment<br/>POST /counter/reset"]:::app
+    S["CounterStore<br/><i>component name + key,<br/>no Redis client</i>"]:::app
+    D["daprd"]:::car
     K[("Redis state store<br/>key: demo-counter")]:::ext
 
-    A -->|"2000 × increment"| DA --> K
-    B -->|"2000 × increment"| DB --> K
+    C --> S -->|"GetStateAndETag / SaveState"| D --> K
 
-    K -.->|"read value + ETag"| RMW["+1, write only if<br/>the ETag still matches"]:::good
+    S -.->|"increment: read value + ETag"| RMW["write only if<br/>the ETag still matches"]:::good
     RMW -.->|"ETag stale — someone else wrote"| RETRY["rejected → re-read → retry"]:::warn
     RETRY -.-> RMW
 
-    RMW --> R(["counter = 4000 · every conflict retried, none lost"]):::good
+    K -.->|"swap the backing store"| Y["statestore.yaml<br/><i>Postgres, Cosmos, …<br/>no code change</i>"]:::ext
 
     classDef app fill:#E8F0FE,stroke:#3B5BA5,color:#12233F
     classDef car fill:#FFF3D6,stroke:#C08A18,color:#4A3400

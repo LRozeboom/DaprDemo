@@ -54,19 +54,11 @@ var demo02Subscriber = builder.AddProject<Projects.Demo02_Retries_Subscriber>("d
     .WaitFor(redis)
     .WaitFor(rabbitmq);
 
-var demo03WorkerA = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03-worker-a", options => options.ExcludeLaunchProfile = true)
+var demo03Worker = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03-worker", options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(port: 5301)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithDaprSidecar(sidecar => sidecar
-        .WithOptions(SidecarFor("demo03-worker-a"))
-        .WaitFor(redis))
-    .WaitFor(redis);
-
-var demo03WorkerB = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03-worker-b", options => options.ExcludeLaunchProfile = true)
-    .WithHttpEndpoint(port: 5302)
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithDaprSidecar(sidecar => sidecar
-        .WithOptions(SidecarFor("demo03-worker-b"))
+        .WithOptions(SidecarFor("demo03-worker"))
         .WaitFor(redis))
     .WaitFor(redis);
 
@@ -80,7 +72,7 @@ var demo04Api = builder.AddProject<Projects.Demo04_Bindings_Api>("demo04-api", o
 if (Environment.GetEnvironmentVariable("DEMO_AUTOSTART") != "true")
 {
     IResourceBuilder<ProjectResource>[] demos =
-        [demo01Publisher, demo01Subscriber, demo02Subscriber, demo03WorkerA, demo03WorkerB, demo04Api];
+        [demo01Publisher, demo01Subscriber, demo02Subscriber, demo03Worker, demo04Api];
 
     foreach (var demo in demos)
     {
