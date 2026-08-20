@@ -86,6 +86,8 @@ IResourceBuilder<ProjectResource>[] demos =
 
 foreach (var demo in demos)
 {
+    demo.WithEnvironment("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", string.Empty);
+
     demo.WithUrlForEndpoint("http", url =>
     {
         url.Url = "/scalar";
