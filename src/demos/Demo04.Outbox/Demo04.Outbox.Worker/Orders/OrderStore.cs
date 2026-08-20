@@ -5,14 +5,8 @@ using DaprDemos.Contracts.Messaging.Events;
 
 namespace Demo04.Outbox.Worker.Orders;
 
-/// <summary>
-/// The whole transactional outbox, in one method. The app writes state; it never publishes. Dapr
-/// writes an outbox marker row inside the same database transaction and publishes the event only
-/// once that transaction has committed — so "row stored" and "event published" cannot come apart.
-/// </summary>
 public sealed class OrderStore(DaprClient daprClient)
 {
-    // camelCase on the wire, which is what DaprClient writes and what ASP.NET model binding reads.
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     public static string KeyFor(Guid orderId) => $"order-{orderId}";
@@ -38,8 +32,6 @@ public sealed class OrderStore(DaprClient daprClient)
             metadata: new Dictionary<string, string>
             {
                 ["outbox.projection"] = "true",
-                // Load-bearing: without it Dapr publishes the payload as text/plain and subscribers
-                // receive a JSON *string* instead of a JSON object.
                 ["contentType"] = "application/json",
             });
 
