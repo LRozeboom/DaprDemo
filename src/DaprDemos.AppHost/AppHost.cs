@@ -11,10 +11,10 @@ var postgresPassword = builder.AddParameter("postgres-password", "daprdemos", se
 
 var redis = builder.AddRedis("redis", port: 6390, password: redisPassword);
 
-// Demo 04's outbox store. Postgres rather than Redis because the outbox needs a store that can
-// actually roll a transaction back — see the comment in dapr/outboxstore.yaml. Host port 5433
-// keeps it out of the way of a locally installed Postgres on 5432.
-var postgres = builder.AddPostgres("postgres", password: postgresPassword, port: 5433);
+var postgres = builder.AddPostgres("postgres", password: postgresPassword, port: 5433)
+    .WithDataVolume("daprdemos-postgres")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithPgAdmin();
 
 var rabbitmq = builder
     .AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5673)
