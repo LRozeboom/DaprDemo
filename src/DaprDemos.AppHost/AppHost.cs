@@ -69,8 +69,6 @@ var demo03Worker = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03
         .WaitFor(redis))
     .WaitFor(redis);
 
-// Demo 04 both publishes (through the outbox) and subscribes, so its sidecar needs Postgres for
-// the state store and Redis for the pub/sub component.
 var demo04Outbox = builder.AddProject<Projects.Demo04_Outbox_Worker>("demo04-outbox", options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(port: 5401)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
