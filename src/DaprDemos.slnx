@@ -15,7 +15,7 @@
   <Folder Name="/demos/Demo03.StateStore/">
     <Project Path="demos/Demo03.StateStore/Demo03.StateStore.Worker/Demo03.StateStore.Worker.csproj" />
   </Folder>
-  <Folder Name="/demos/Demo04.Outbox/">
+  <Folder Name="/demos/Demo04.Outbox/" Id="afb8987c-29e0-8c06-a2d6-3020bb20a55a">
     <Project Path="demos/Demo04.Outbox/Demo04.Outbox.Worker/Demo04.Outbox.Worker.csproj" />
   </Folder>
   <Project Path="DaprDemos.AppHost/DaprDemos.AppHost.csproj" />
