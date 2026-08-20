@@ -7,7 +7,14 @@ var redisPassword = builder.AddParameter("redis-password", "daprdemos", secret: 
 var rabbitUser = builder.AddParameter("rabbitmq-username", "guest");
 var rabbitPassword = builder.AddParameter("rabbitmq-password", "guest", secret: true);
 
+var postgresPassword = builder.AddParameter("postgres-password", "daprdemos", secret: true);
+
 var redis = builder.AddRedis("redis", port: 6390, password: redisPassword);
+
+// Demo 04's outbox store. Postgres rather than Redis because the outbox needs a store that can
+// actually roll a transaction back — see the comment in dapr/outboxstore.yaml. Host port 5433
+// keeps it out of the way of a locally installed Postgres on 5432.
+var postgres = builder.AddPostgres("postgres", password: postgresPassword, port: 5433);
 
 var rabbitmq = builder
     .AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5673)
@@ -62,15 +69,20 @@ var demo03Worker = builder.AddProject<Projects.Demo03_StateStore_Worker>("demo03
         .WaitFor(redis))
     .WaitFor(redis);
 
-var demo04Api = builder.AddProject<Projects.Demo04_Bindings_Api>("demo04-api", options => options.ExcludeLaunchProfile = true)
+// Demo 04 both publishes (through the outbox) and subscribes, so its sidecar needs Postgres for
+// the state store and Redis for the pub/sub component.
+var demo04Outbox = builder.AddProject<Projects.Demo04_Outbox_Worker>("demo04-outbox", options => options.ExcludeLaunchProfile = true)
     .WithHttpEndpoint(port: 5401)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithEnvironment("DISCORD_WEBHOOK_URL", Environment.GetEnvironmentVariable("DISCORD_WEBHOOK_URL") ?? string.Empty)
     .WithDaprSidecar(sidecar => sidecar
-        .WithOptions(SidecarFor("demo04-api")));
+        .WithOptions(SidecarFor("demo04-outbox"))
+        .WaitFor(redis)
+        .WaitFor(postgres))
+    .WaitFor(redis)
+    .WaitFor(postgres);
 
 IResourceBuilder<ProjectResource>[] demos =
-    [demo01Publisher, demo01Subscriber, demo02Subscriber, demo03Worker, demo04Api];
+    [demo01Publisher, demo01Subscriber, demo02Subscriber, demo03Worker, demo04Outbox];
 
 foreach (var demo in demos)
 {

@@ -16,3 +16,4 @@ scopes:
 - demo01-publisher
 - demo01-subscriber
 - demo02-subscriber
+- demo04-outbox

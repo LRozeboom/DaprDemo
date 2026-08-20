@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" />
     <PackageReference Include="Aspire.Hosting.Redis" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" />
@@ -16,7 +17,7 @@
     <ProjectReference Include="..\demos\Demo01.PubSub\Demo01.PubSub.Subscriber\Demo01.PubSub.Subscriber.csproj" />
     <ProjectReference Include="..\demos\Demo02.Retries\Demo02.Retries.Subscriber\Demo02.Retries.Subscriber.csproj" />
     <ProjectReference Include="..\demos\Demo03.StateStore\Demo03.StateStore.Worker\Demo03.StateStore.Worker.csproj" />
-    <ProjectReference Include="..\demos\Demo04.Bindings\Demo04.Bindings.Api\Demo04.Bindings.Api.csproj" />
+    <ProjectReference Include="..\demos\Demo04.Outbox\Demo04.Outbox.Worker\Demo04.Outbox.Worker.csproj" />
   </ItemGroup>
 
 </Project>

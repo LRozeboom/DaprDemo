@@ -9,19 +9,21 @@ Four small, independent Dapr concept demos in one .NET 10 solution, orchestrated
 | 01 PubSub | Pub/sub through the sidecar; swap Redis → RabbitMQ with zero code changes | `demo01-publisher`, `demo01-subscriber` | 5101, 5102 |
 | 02 Retries | Non-2xx from a subscriber ⇒ Dapr retries per a resiliency policy; the Result pattern *is* the retry mechanism | `demo02-subscriber` | 5201 |
 | 03 StateStore | State through the sidecar — no Redis client in the app; ETags for optimistic concurrency | `demo03-worker` | 5301 |
-| 04 Bindings | HTTP output binding to Discord behind a Clean Architecture `INotifier` | `demo04-api` | 5401 |
+| 04 Outbox | Transactional outbox: one state transaction stores the order **and** publishes the event | `demo04-outbox` | 5401 |
+
+Demo 04 is the finale: it combines all three earlier concepts — state (03) + pub/sub (01) +
+retries (02) — into the pattern that makes event-driven architecture safe.
 
 Shared infrastructure starts eagerly so containers are warm before the talk:
-Redis (`localhost:6390`, password `daprdemos`, TLS) and RabbitMQ (`localhost:5673`,
-`guest`/`guest`, management UI at <http://localhost:15672>).
+Redis (`localhost:6390`, password `daprdemos`, TLS), RabbitMQ (`localhost:5673`,
+`guest`/`guest`, management UI at <http://localhost:15672>) and Postgres (`localhost:5433`,
+`postgres`/`daprdemos`, database `postgres` — demo 04's outbox store).
 
 ## Prerequisites
 
 - Docker (Desktop) running
 - .NET 10 SDK
 - Dapr CLI, initialized (`dapr init`) — the sidecars use the default placement/scheduler services
-- Optional, for demo 04: a Discord webhook URL in the `DISCORD_WEBHOOK_URL` environment variable
-  (set it in the shell **before** launching the AppHost; it is never stored in the repo)
 
 ## Launch
 
@@ -30,7 +32,7 @@ dotnet run --project src/DaprDemos.AppHost
 ```
 
 Open the dashboard URL printed in the console. All demo apps (and their Dapr sidecars) are
-stopped; Redis and RabbitMQ come up automatically.
+stopped; Redis, RabbitMQ and Postgres come up automatically.
 
 Dry-run tip: `DEMO_AUTOSTART=true` starts every demo immediately instead of explicit-start.
 
@@ -137,27 +139,104 @@ optimistic concurrency you get from the state store instead of writing yourself.
 Talking point: the value survives restarts of the app but not of the Redis container — stopping
 the AppHost takes the state with it.
 
-## Demo 04 — Output binding to Discord
+## Demo 04 — Transactional outbox
 
-Requires `DISCORD_WEBHOOK_URL` set before launch. Start `demo04-api`, then:
-
-```bash
-curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json" -d "{\"title\":\"Lunch lecture\",\"message\":\"Dapr output bindings work!\"}"
-```
-
-`202 Accepted`, and the alert pops up in Discord. The application layer only knows
-`INotifier`; the Discord/webhook details live in `DiscordBindingNotifier` in Infrastructure,
-and the webhook URL itself lives only in the environment (resolved by the sidecar through the
-`envvar-secrets` secret store component).
-
-Validation failure path:
+The finale, and the one that ties demos 01-03 together. Start `demo04-outbox`, then place an
+order:
 
 ```bash
-curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json" -d "{\"title\":\"\",\"message\":\"no title\"}"
+curl -i -X POST http://localhost:5401/orders -H "Content-Type: application/json" -d "{\"customer\":\"Ada Lovelace\",\"amount\":42.50}"
 ```
 
-`400` with error code `Alert.EmptyTitle` — the domain's `Alert.Create` returned a failure
-`Result` and nobody threw an exception.
+`202 Accepted` with the order id, and about a second later the subscriber logs:
+
+```text
+Committed order <id> for Ada Lovelace (42.50) under key order-<id> — the OrderPlaced event rode along in the same transaction
+ORDER RECEIVED <id>: Ada Lovelace for 42.50 — the state store already has it as 'Placed' (attempt 1)
+```
+
+**The problem this solves.** An order service normally does two writes: save the order to the
+database, then publish `OrderPlaced` to the broker. There is no transaction spanning both. Crash
+between them and you either have an order nobody hears about, or — if you publish first — an
+event for an order that does not exist. The classic fix is an outbox table plus a relay process
+you write and operate yourself.
+
+**What the app does instead.** `OrderStore.CommitAsync` runs *one* Dapr state transaction with
+two operations on the same key:
+
+1. the order row that gets stored, and
+2. the same key marked `outbox.projection: true` — never written to the store, it only says what
+   the published message should look like (which is why `OrderPlacedEvent` on the topic is
+   narrower than the row in the database).
+
+There is no `PublishEventAsync` anywhere in demo 04. Dapr writes an extra marker row inside that
+same transaction, and its sidecar publishes the event to the `orders` topic only after the
+transaction commits — so "row stored" and "event published" cannot come apart. The entire pattern
+is four lines of metadata in `dapr/outboxstore.yaml`:
+
+```yaml
+- name: outboxPublishPubsub    # which pub/sub component to publish on
+  value: pubsub
+- name: outboxPublishTopic     # which topic subscribers listen to
+  value: orders
+```
+
+Check the row that was stored (state, demo 03) — and note the event carried no `status` field:
+
+```bash
+curl http://localhost:5401/orders/<id>
+```
+
+```json
+{"id":"...","customer":"Ada Lovelace","amount":42.50,"placedAt":"...","status":"Placed"}
+```
+
+### The rollback: no ghost events
+
+Same endpoint, same code path, but the state write is made to fail — the transaction carries a
+stale ETag, exactly the conflict demo 03 guards against:
+
+```bash
+curl -i -X POST http://localhost:5401/orders -H "Content-Type: application/json" -d "{\"customer\":\"Ada Lovelace\",\"amount\":42.50,\"forceConflict\":true}"
+```
+
+`409 Conflict` with `Order.TransactionRejected`, and then **nothing**: no `ORDER RECEIVED` line,
+ever. The transaction rolled back, so the marker row never existed, and ~10 s later the sidecar
+logs that it discarded the pending message (`outbox state not found ... discarding message`).
+That is the whole promise of the pattern in one curl: a write that fails publishes nothing.
+
+> This is why demo 04's store is Postgres and not Redis. Dapr's Redis state store runs a
+> "transaction" as a pipeline and cannot roll back — the marker row would survive the failed
+> write and the event would go out anyway. Swapping the store is still a YAML edit (demo 03's
+> point), but *which* store you pick decides whether you actually get atomicity.
+
+### At-least-once, so consumers must cope (demo 02, again)
+
+The outbox guarantees the event is delivered *at least* once, so the consumer has to survive a
+failed delivery. Ask an order to fail its first two deliveries:
+
+```bash
+curl -i -X POST http://localhost:5401/orders -H "Content-Type: application/json" -d "{\"customer\":\"Grace Hopper\",\"amount\":99.00,\"failDeliveries\":2}"
+```
+
+```text
+Failed Attempt 1 of 2 for order <id>: failing delivery on purpose — Dapr will redeliver
+Failed Attempt 2 of 2 ...
+ORDER RECEIVED <id>: Grace Hopper for 99.00 — the state store already has it as 'Placed' (attempt 3)
+```
+
+Those retries are the same `resiliency.yaml` policy demo 02 uses, now scoped to `demo04-outbox`
+as well. State + pub/sub + retries, one flow, no infrastructure code in the app.
+
+### Inspecting the outbox in Postgres
+
+```bash
+docker exec -it <postgres-container> psql -U postgres -c "select key, value from state;"
+```
+
+The `order-<id>` rows are the orders. Marker rows named `outbox-<uuid>` appear inside the
+transaction and are deleted by the sidecar the moment the event has been published — catch one by
+running the query immediately after a POST.
 
 ## Reset between dry runs
 
@@ -168,16 +247,21 @@ curl -i -X POST http://localhost:5401/alerts -H "Content-Type: application/json"
 - **RabbitMQ queues:** purge via the management UI (Queues → purge) if a dry run left messages behind.
 - **Demo 02** needs no reset: each `/publish` creates a new message id with a fresh failure
   count. (The attempt counters are in-memory anyway — restarting `demo02-subscriber` clears them.)
+- **Demo 04** needs no reset either: every order gets a new id and its own key. To wipe the
+  orders anyway: `docker exec <postgres-container> psql -U postgres -c "delete from state;"`.
 - Stopping the AppHost removes the containers; state does not survive between sessions.
 
 ## Environment notes
 
-- Redis uses host port **6390** and RabbitMQ **5673** on purpose: `dapr init` already owns
-  6379 (`dapr_redis`), and 5672 is commonly taken by other local projects.
+- Redis uses host port **6390**, RabbitMQ **5673** and Postgres **5433** on purpose: `dapr init`
+  already owns 6379 (`dapr_redis`), and 5672/5432 are commonly taken by other local projects.
 - Aspire 13 starts the Redis container with TLS enabled (self-signed dev certificate); the
   Dapr components therefore set `enableTLS: "true"` (Dapr's Redis client does not verify the
   certificate).
 - Component `initTimeout` is 120 s so a slow first container pull can't kill a sidecar.
-- The state store sets `keyPrefix: none`, so the key in Redis is the literal `demo-counter` the
-  code names rather than the default per-app-id `demo03-worker||demo-counter` — which is why the
-  `redis-cli DEL demo-counter` above works.
+- Both state stores set `keyPrefix: none`, so the keys in Redis and Postgres are the literal
+  `demo-counter` / `order-<id>` the code names rather than the default per-app-id
+  `demo03-worker||demo-counter` — which is why the `redis-cli DEL demo-counter` above works.
+- Demo 04's `outboxstore` is a *second* state store component, on Postgres: only it has the
+  outbox metadata, so demos 03 and 04 stay independent. Dapr creates its `state` table on first
+  connect — no schema to set up.

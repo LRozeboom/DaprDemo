@@ -1,12 +1,12 @@
 {
   "profiles": {
-    "Demo04.Bindings.Api": {
+    "Demo04.Outbox.Worker": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:59693;http://localhost:59694"
+      "applicationUrl": "https://localhost:59795;http://localhost:59799"
     }
   }
 }

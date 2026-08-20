@@ -15,11 +15,8 @@
   <Folder Name="/demos/Demo03.StateStore/">
     <Project Path="demos/Demo03.StateStore/Demo03.StateStore.Worker/Demo03.StateStore.Worker.csproj" />
   </Folder>
-  <Folder Name="/demos/Demo04.Bindings/">
-    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Api/Demo04.Bindings.Api.csproj" />
-    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Application/Demo04.Bindings.Application.csproj" />
-    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Domain/Demo04.Bindings.Domain.csproj" />
-    <Project Path="demos/Demo04.Bindings/Demo04.Bindings.Infrastructure/Demo04.Bindings.Infrastructure.csproj" />
+  <Folder Name="/demos/Demo04.Outbox/">
+    <Project Path="demos/Demo04.Outbox/Demo04.Outbox.Worker/Demo04.Outbox.Worker.csproj" />
   </Folder>
   <Project Path="DaprDemos.AppHost/DaprDemos.AppHost.csproj" />
   <Project Path="DaprDemos.Contracts/DaprDemos.Contracts.csproj" />

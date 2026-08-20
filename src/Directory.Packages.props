@@ -7,6 +7,7 @@
   <ItemGroup>
     <!-- Aspire.Hosting.AppHost is referenced implicitly (and version-pinned) by the
          Aspire.AppHost.Sdk declared in global.json, so it must not appear here. -->
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.4.6" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.0.0" />

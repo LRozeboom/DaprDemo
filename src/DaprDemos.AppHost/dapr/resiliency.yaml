@@ -3,14 +3,17 @@ kind: Resiliency
 metadata:
   # Self-hosted daprd only picks up a resiliency spec from a file named exactly `resiliency.yaml`
   # in the resources path; the `name` below is just the spec's identity in the logs.
-  name: demo02-retries
-# Scoped to demo 02 so the other demos keep Dapr's out-of-the-box behaviour.
+  name: demo-retries
+# Scoped to the two demos that want visible retries; the others keep Dapr's out-of-the-box
+# behaviour. Demo 02 shows the retry itself, demo 04 relies on it: the outbox delivers at least
+# once, so its consumer has to survive a failed delivery.
 scopes:
 - demo02-subscriber
+- demo04-outbox
 spec:
   policies:
     retries:
-      flakyMessageRetry:
+      messageRetry:
         policy: constant
         duration: 2s
         # Comfortably above the 1-5 failures a message plans, so every message eventually succeeds.
@@ -22,4 +25,4 @@ spec:
         # the Redis Streams component acks a message even when the app returns non-2xx, so without
         # this policy each message is delivered exactly once and the retry is never seen.
         inbound:
-          retry: flakyMessageRetry
+          retry: messageRetry

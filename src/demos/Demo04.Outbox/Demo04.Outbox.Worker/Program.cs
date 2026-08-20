@@ -1,12 +1,10 @@
-using Demo04.Bindings.Application;
-using Demo04.Bindings.Infrastructure;
+using Demo04.Outbox.Worker;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure();
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddDapr();
 
 var app = builder.Build();
 
@@ -14,6 +12,8 @@ app.MapDefaultEndpoints();
 
 // HTTPS redirection is deliberately absent: it breaks Dapr sidecar communication.
 
+app.UseCloudEvents();
+app.MapSubscribeHandler();
 app.MapControllers();
 
 app.Run();

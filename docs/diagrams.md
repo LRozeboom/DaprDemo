@@ -1,7 +1,8 @@
 # Demo diagrams
 
-One Mermaid diagram per demo, sized for a slide. Ready-made PNG exports (2× scale,
-white background) are in `docs/images/` — drag them straight onto a slide. To restyle or
+One Mermaid diagram per demo — two for demo 04, the problem then the mechanism — sized for a
+slide. Ready-made PNG exports (2× scale, white background) are in `docs/images/` — drag them
+straight onto a slide. To restyle or
 re-export, paste a block below into <https://mermaid.live> (SVG stays crisp when scaled),
 or re-render everything with:
 
@@ -12,12 +13,14 @@ cd docs/images
 mv out-1.png demo01-pubsub.png
 mv out-2.png demo02-retries.png
 mv out-3.png demo03-statestore.png
-mv out-4.png demo04-bindings.png
+mv out-4.png demo04-outbox-problem.png
+mv out-5.png demo04-outbox.png
 rm out.md
 ```
 
-Legend used in all four: **blue** = our code, **amber** = the Dapr sidecar,
-**purple** = external system, **white** = the presenter's `curl` / the log line.
+Legend used throughout: **blue** = our code, **amber** = the Dapr sidecar,
+**purple** = external system, **white** = the presenter's `curl` / the log line,
+**red** = the failure path.
 
 ## Demo 01 — Pub/sub through the sidecar
 
@@ -99,37 +102,85 @@ flowchart LR
     classDef warn fill:#FFF3D6,stroke:#C08A18,color:#4A3400
 ```
 
-## Demo 04 — Output binding to Discord
+## Demo 04a — The dual-write problem the outbox solves
 
 ```mermaid
-flowchart LR
-    C(["curl POST /alerts"]):::client
-
-    subgraph API["demo04-api :5401"]
-        direction TB
-        E["Api<br/>POST /alerts"]:::app
-        H["Application<br/>knows only INotifier"]:::app
-        DM["Domain<br/>Alert.Create validates"]:::app
-        I["Infrastructure<br/>DiscordBindingNotifier"]:::app
-        E --> H
-        H --> DM
-        H --> I
+flowchart TB
+    subgraph BAD["without an outbox — two writes, no transaction"]
+        direction LR
+        A1["order service"]:::app
+        D1[("database")]:::ext
+        B1[("broker")]:::ext
+        A1 -->|"1 · save order"| D1
+        A1 -->|"2 · publish OrderPlaced"| B1
+        X1(["crash between 1 and 2<br/>order stored, nobody told"]):::bad
+        X2(["publish first, save fails<br/>event for an order that<br/>does not exist"]):::bad
+        D1 -.-> X1
+        B1 -.-> X2
     end
 
-    S["daprd<br/>binding 'discord' · bindings.http"]:::car
-    W(["Discord channel"]):::ext
-    SEC[/"DISCORD_WEBHOOK_URL<br/>envvar-secrets"/]:::ext
-    BAD(["400 · Alert.EmptyTitle"]):::bad
+    subgraph GOOD["with Dapr's outbox — one transaction"]
+        direction LR
+        A2["order service<br/><i>writes state, never publishes</i>"]:::app
+        S2["daprd"]:::car
+        D2[("Postgres<br/>order row + outbox marker")]:::ext
+        B2[("Redis<br/>topic orders")]:::ext
+        A2 -->|"one state transaction"| S2
+        S2 ==>|"commit"| D2
+        D2 -.->|"committed?"| S2
+        S2 ==>|"only then: publish"| B2
+        OK(["either both, or neither"]):::good
+        B2 --- OK
+    end
 
-    C --> E
-    I -->|"InvokeBindingAsync · create"| S -->|"HTTP POST webhook"| W
-    SEC -.->|"resolves url"| S
-    DM -.->|"empty title → failure Result"| BAD
+    BAD ~~~ GOOD
 
     classDef app fill:#E8F0FE,stroke:#3B5BA5,color:#12233F
     classDef car fill:#FFF3D6,stroke:#C08A18,color:#4A3400
     classDef ext fill:#EDEAF8,stroke:#6C5CB5,color:#241D4B
-    classDef client fill:#FFFFFF,stroke:#7A7A7A,color:#222222
+    classDef good fill:#E3F5E8,stroke:#2E8B57,color:#12331F
     classDef bad fill:#FDE8E8,stroke:#C0392B,color:#3F1412
-    style API fill:#FAFAFC,stroke:#B9B6C8,color:#12233F
+    style BAD fill:#FFF7F7,stroke:#C0392B,stroke-dasharray:4 3,color:#3F1412
+    style GOOD fill:#F5FBF6,stroke:#2E8B57,stroke-dasharray:4 3,color:#12331F
 ```
+
+## Demo 04b — Transactional outbox: state + pub/sub + retries
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as curl
+    participant A as demo04-outbox
+    participant D as daprd
+    participant P as Postgres<br/>outboxstore
+    participant R as Redis<br/>pubsub
+
+    C->>A: POST /orders
+    A->>D: one state transaction:<br/>order row + outbox.projection (the event)
+    D->>R: park the message on an internal topic
+    D->>P: BEGIN · order row + outbox marker · COMMIT
+
+    alt transaction commits
+        D-->>A: committed
+        A-->>C: 202 Accepted
+        D->>P: marker there?
+        P-->>D: yes — the write is durable
+        D->>R: publish OrderPlaced · topic orders
+        R->>D: deliver
+        loop failDeliveries (optional)
+            D->>A: POST /orders-handler
+            A-->>D: 500 — failure Result
+            Note right of D: resiliency.yaml · constant 2s<br/>at-least-once, so consumers retry
+        end
+        D->>A: POST /orders-handler
+        A->>P: read order by id
+        Note right of A: log: ORDER RECEIVED — the state<br/>store already has it as 'Placed'
+    else stale ETag — transaction rolls back
+        D-->>A: ETag mismatch — nothing stored
+        A-->>C: 409 Order.TransactionRejected
+        D->>P: marker there?
+        P-->>D: no row, ever
+        Note over D,R: message discarded —<br/>no ghost event, no subscriber call
+    end
+```
+
