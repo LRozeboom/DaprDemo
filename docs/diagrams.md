@@ -144,7 +144,7 @@ flowchart TB
     style GOOD fill:#F5FBF6,stroke:#2E8B57,stroke-dasharray:4 3,color:#12331F
 ```
 
-## Demo 04b — Transactional outbox: state + pub/sub + retries
+## Demo 04b — Transactional outbox: the flow
 
 ```mermaid
 sequenceDiagram
@@ -157,30 +157,17 @@ sequenceDiagram
 
     C->>A: POST /orders
     A->>D: one state transaction:<br/>order row + outbox.projection (the event)
-    D->>R: park the message on an internal topic
+    Note right of A: no PublishEventAsync anywhere<br/>the app only writes state
     D->>P: BEGIN · order row + outbox marker · COMMIT
-
-    alt transaction commits
-        D-->>A: committed
-        A-->>C: 202 Accepted
-        D->>P: marker there?
-        P-->>D: yes — the write is durable
-        D->>R: publish OrderPlaced · topic orders
-        R->>D: deliver
-        loop failDeliveries (optional)
-            D->>A: POST /orders-handler
-            A-->>D: 500 — failure Result
-            Note right of D: resiliency.yaml · constant 2s<br/>at-least-once, so consumers retry
-        end
-        D->>A: POST /orders-handler
-        A->>P: read order by id
-        Note right of A: log: ORDER RECEIVED — the state<br/>store already has it as 'Placed'
-    else stale ETag — transaction rolls back
-        D-->>A: ETag mismatch — nothing stored
-        A-->>C: 409 Order.TransactionRejected
-        D->>P: marker there?
-        P-->>D: no row, ever
-        Note over D,R: message discarded —<br/>no ghost event, no subscriber call
-    end
+    D-->>A: committed
+    A-->>C: 202 Accepted
+    D->>P: marker there?
+    P-->>D: yes — the write is durable
+    D->>R: publish OrderPlaced · topic orders
+    R->>D: deliver
+    D->>A: POST /orders-handler
+    A->>P: read order by id
+    Note right of A: log: ORDER RECEIVED — the state<br/>store already has it as 'Placed'
+    Note over D,P: rolled back instead? no marker row,<br/>so the event is never published
 ```
 

@@ -6,8 +6,8 @@ spec:
   # Postgres, not Redis, on purpose. Dapr's Redis state store runs a "transaction" as a Redis
   # pipeline and cannot roll back: a failing operation still leaves the outbox marker row behind,
   # so the event would be published for an order that was never stored — the exact bug the outbox
-  # is supposed to prevent. Postgres gives a real BEGIN/ROLLBACK, which is what demo 04's rollback
-  # half needs. (Dapr itself warns about this in the Redis component's logs.)
+  # is supposed to prevent. Postgres gives a real BEGIN/ROLLBACK. (Dapr itself warns about this in
+  # the Redis component's logs.)
   type: state.postgresql
   version: v1
   # Generous init timeout: sidecars can start before the Postgres container is ready (slow pull)
@@ -19,16 +19,12 @@ spec:
   # names, so the `psql` inspection in the README shows what the demo says it stores.
   - name: keyPrefix
     value: none
-  # --- the entire outbox pattern, in four lines of YAML ---
+  # --- the entire outbox pattern, in two lines of YAML ---
   # When an app runs a state transaction against this store, daprd writes a marker row inside that
   # same transaction and publishes the message only once the transaction has committed.
   - name: outboxPublishPubsub
     value: pubsub
   - name: outboxPublishTopic
     value: orders
-  # Transaction rolled back => the marker row never exists => the pending message is dropped with a
-  # single log line instead of being retried forever. This is what makes the rollback demo tidy.
-  - name: outboxDiscardWhenMissingState
-    value: "true"
 scopes:
 - demo04-outbox

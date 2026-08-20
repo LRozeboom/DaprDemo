@@ -21,15 +21,13 @@ public sealed class OrdersController(
     public async Task<IActionResult> PlaceOrderAsync(PlaceOrderRequest request, CancellationToken cancellationToken)
     {
         var result = await placeHandler.HandleAsync(
-            new PlaceOrderCommand(request.Customer, request.Amount, request.FailDeliveries, request.ForceConflict),
+            new PlaceOrderCommand(request.Customer, request.Amount),
             cancellationToken);
 
         // 202, not 200: the row is committed, but the event is still on its way to subscribers.
         return result.Match<IActionResult>(
             id => Accepted(new { id }),
-            error => error.Code == OrderErrors.TransactionRejectedCode
-                ? Conflict(new { error.Code, error.Message })
-                : BadRequest(new { error.Code, error.Message }));
+            error => BadRequest(new { error.Code, error.Message }));
     }
 
     [HttpGet("/orders/{id:guid}")]

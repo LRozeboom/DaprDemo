@@ -14,7 +14,6 @@ public static class DependencyInjection
         services.AddDaprClient();
 
         services.AddSingleton<OrderStore>();
-        services.AddSingleton<OrderDeliveryPlan>();
 
         services.AddScoped<ICommandHandler<PlaceOrderCommand, Guid>, PlaceOrderCommandHandler>();
         services.AddScoped<IQueryHandler<GetOrderQuery, OrderRecord>, GetOrderQueryHandler>();

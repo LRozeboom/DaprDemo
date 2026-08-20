@@ -12,37 +12,21 @@ namespace Demo04.Outbox.Worker.Orders;
 /// </summary>
 public sealed class OrderStore(DaprClient daprClient)
 {
-    /// <summary>
-    /// An ETag the row cannot possibly have (it is Postgres' `xmin`, which starts far higher).
-    /// Passing it makes the store reject the write the way a genuine concurrent update would —
-    /// demo 03's optimistic concurrency, used here to force a rollback on demand.
-    /// </summary>
-    private const string StaleETag = "1";
-
     // camelCase on the wire, which is what DaprClient writes and what ASP.NET model binding reads.
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     public static string KeyFor(Guid orderId) => $"order-{orderId}";
 
-    /// <summary>
-    /// Stores the order and hands Dapr the event to publish, as a single state transaction.
-    /// Throws <see cref="DaprException"/> when the store rejects the transaction.
-    /// </summary>
-    public Task CommitAsync(
-        OrderRecord order,
-        OrderPlacedEvent orderPlaced,
-        bool forceConflict,
-        CancellationToken cancellationToken)
+    /// <summary>Stores the order and hands Dapr the event to publish, as a single state transaction.</summary>
+    public Task CommitAsync(OrderRecord order, OrderPlacedEvent orderPlaced, CancellationToken cancellationToken)
     {
         var key = KeyFor(order.Id);
 
-        // Operation 1 — the row. With `forceConflict` it carries a stale ETag, so the store rejects
-        // it and the whole transaction (marker row included) rolls back.
+        // Operation 1 — the row that actually gets stored.
         var writeOrder = new StateTransactionRequest(
             key,
             JsonSerializer.SerializeToUtf8Bytes(order, SerializerOptions),
-            StateOperationType.Upsert,
-            etag: forceConflict ? StaleETag : null);
+            StateOperationType.Upsert);
 
         // Operation 2 — same key, marked `outbox.projection`. It is never written to the store: it
         // only tells Dapr what the published message should look like, which is how the event on

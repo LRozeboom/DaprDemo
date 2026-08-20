@@ -4,12 +4,10 @@ metadata:
   # Self-hosted daprd only picks up a resiliency spec from a file named exactly `resiliency.yaml`
   # in the resources path; the `name` below is just the spec's identity in the logs.
   name: demo-retries
-# Scoped to the two demos that want visible retries; the others keep Dapr's out-of-the-box
-# behaviour. Demo 02 shows the retry itself, demo 04 relies on it: the outbox delivers at least
-# once, so its consumer has to survive a failed delivery.
+# Scoped to demo 02, the only demo that wants visible retries; the others keep Dapr's
+# out-of-the-box behaviour.
 scopes:
 - demo02-subscriber
-- demo04-outbox
 spec:
   policies:
     retries:
